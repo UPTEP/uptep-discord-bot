@@ -34,7 +34,7 @@ Changer les IDs de serveur/salon dans `.env`, puis redémarrer pour basculer. Un
 
 ## Historiques et statistiques (chefs)
 
-Trois commandes slash sont enregistrées au démarrage dans le serveur configuré et utilisables dans le salon des convois. Leurs réponses sont privées, avec pagination et sélection d’une demande pour afficher son détail et tous ses convois :
+Trois commandes slash sont enregistrées au démarrage dans le serveur configuré et utilisables dans tous les salons de ce serveur, y compris leur pagination et le détail des demandes. Leurs réponses sont privées, avec pagination et sélection d’une demande pour afficher son détail et tous ses convois :
 
 - `/historique-demandes` : filtre `joueur` (pseudo exact), `etat`, période. Quantités initiales/restantes, création, validation, clôture, annulation et clôture manuelle sont conservées.
 - `/historique-convois` : filtre `expediteur`, `destinataire`, `demande`, période. Les déclarations annulées restent visibles et identifiées.

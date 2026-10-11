@@ -39,7 +39,7 @@ client.on(Events.InteractionCreate,async i=>{
    return result;
   };
  }
- if(i.guildId!==cfg.guildId||i.channelId!==cfg.channelId){await i.reply({content:'Ce bouton n’est pas disponible sur ce serveur ou dans ce salon.',flags:MessageFlags.Ephemeral}).catch(()=>{});return;}
+ if(i.guildId!==cfg.guildId||(!slash&&!reportComponent&&i.channelId!==cfg.channelId)){await i.reply({content:'Ce bouton n’est pas disponible sur ce serveur ou dans ce salon.',flags:MessageFlags.Ephemeral}).catch(()=>{});return;}
  await (slash||reportComponent?reports:ui).handle(i).catch(e=>console.error('Réponse Discord impossible :',e.name));
 });
 client.once(Events.ClientReady,async()=>{
