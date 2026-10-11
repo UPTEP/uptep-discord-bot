@@ -114,3 +114,17 @@ Les commandes sont enregistrées automatiquement au démarrage dans le serveur d
 ### Interprétation des données
 
 Les chiffres représentent les **envois déclarés au bot**, sans confirmation de livraison dans Fourmizzz. Les heures d’arrivée sont prévisionnelles. La date de fin d’une demande correspond à la clôture des déclarations, automatique ou manuelle ; elle ne prouve pas l’arrivée des ressources dans le jeu.
+
+## Ajuster le restant d’une demande
+
+Le bouton bleu **Ajuster le restant**, dans le tableau des convois, permet au demandeur ou à un responsable (droit chaîne ou liste `ADMIN_DISCORD_IDS`) de modifier une demande **validée et en cours**.
+
+1. Choisir la demande.
+2. Renseigner le **nouveau total encore nécessaire** pour chaque ressource dans le formulaire prérempli. Exemple : 80 000 matériaux restants moins 30 000 produits = saisir **50 000**, pas 30 000.
+3. Vérifier les anciennes et nouvelles quantités, puis confirmer.
+
+Les quantités initiales et les convois déclarés sont conservés. Les ajustements sont historisés séparément avec leur auteur, la date et les valeurs avant/après ; les derniers sont visibles dans Consulter et dans le détail de `/historique-demandes`. Ils ne comptent pas comme des livraisons dans `/stats-convois`. La barre de progression reflète la part du besoin couverte par les convois et les ajustements.
+
+Les restants peuvent être corrigés à la hausse dans la limite du montant initial moins les convois non annulés. Si les deux restants sont mis à zéro, la demande est terminée manuellement. Si un convoi ou un autre ajustement change le restant pendant la saisie, le bot refuse cette confirmation : repartir de **Ajuster le restant** pour ouvrir un formulaire à jour.
+
+Déploiement : appliquer `app/bot-demand-adjustments.sql` du dépôt du site sur une base existante, déployer l’API correspondante, et ajouter le scope `demandes:adjust` au secret du bot. Les nouvelles installations utilisent le schéma complet de la base UPTEP, qui inclut cette table.
