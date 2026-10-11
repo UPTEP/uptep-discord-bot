@@ -1,3 +1,4 @@
+import {Reports,reportCommands} from './reports.js';
 import {Client,GatewayIntentBits,Events,PermissionFlagsBits,MessageFlags} from 'discord.js';
 import {config} from './config.js';import {Api,Snapshot} from './api.js';import {State} from './state.js';import {UI,boardPayload} from './ui.js';
 const cfg=config();const api=new Api(cfg);const snapshot=new Snapshot(api);const state=new State(cfg.dataDir);
@@ -10,8 +11,12 @@ async function refresh(){
  try{return await refreshing;}finally{refreshing=null;}
 }
 const ui=new UI({api,snapshot,state,refresh});
+const reports=new Reports({api,state});
 client.on(Events.InteractionCreate,async i=>{
- if(stopping||!('customId' in i)||!i.customId.startsWith('uptep:'))return;
+ if(stopping)return;
+ const slash=i.isChatInputCommand()&&reportCommands.some(c=>c.name===i.commandName);
+ const reportComponent=i.customId?.startsWith('uptep:report');
+ if(!slash&&!i.customId?.startsWith('uptep:'))return;
  // Only ephemeral responses created by this interaction expire; never delete the shared board.
  let cleanupTimer;
  for(const method of ['reply','editReply']){
@@ -35,7 +40,7 @@ client.on(Events.InteractionCreate,async i=>{
   };
  }
  if(i.guildId!==cfg.guildId||i.channelId!==cfg.channelId){await i.reply({content:'Ce bouton n’est pas disponible sur ce serveur ou dans ce salon.',flags:MessageFlags.Ephemeral}).catch(()=>{});return;}
- await ui.handle(i).catch(e=>console.error('Réponse Discord impossible :',e.name));
+ await (slash||reportComponent?reports:ui).handle(i).catch(e=>console.error('Réponse Discord impossible :',e.name));
 });
 client.once(Events.ClientReady,async()=>{
  try{
@@ -46,6 +51,8 @@ client.once(Events.ClientReady,async()=>{
   const saved=state.board(key);if(saved)board=await channel.messages.fetch(saved).catch(e=>{if(e.code===10008)return null;throw e;});
   if(board&&board.author.id!==client.user.id)throw new Error('Le message enregistré appartient à un autre compte.');
   if(!board){const messages=await channel.messages.fetch({limit:100});board=messages.find(m=>m.author.id===client.user.id&&m.embeds.some(e=>e.footer?.text?.startsWith('UPTEP_CONVOYS_V1')))??null;if(board)state.setBoard(key,board.id);}
+  for(const command of reportCommands)await client.application.commands.create(command,cfg.guildId);
+  console.log('Trois commandes slash de rapports enregistrées.');
   await refresh();timer=setInterval(()=>refresh().catch(e=>console.error('Actualisation impossible :',e.name)),60000);
   console.log('Bot connecté ; tableau prêt dans le salon configuré.');
  }catch(e){console.error('Démarrage impossible :',e.message);await client.destroy();process.exitCode=1;}

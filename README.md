@@ -31,3 +31,19 @@ Changer les IDs de serveur/salon dans `.env`, puis redémarrer pour basculer. Un
 `data/state.json` contient l’ID du tableau et les confirmations privées avec leur commande idempotente. Garder ce dossier lors des déploiements. Ne jamais publier ce fichier ni `.env`. Les réponses privées expirent après cinq minutes ; les messages de réussite après dix secondes. Ces minuteries ne survivent pas à un redémarrage du processus.
 
 `npm test` exécute les tests locaux sans envoyer de messages Discord ni modifier l’API. Les secrets ne sont pas inclus. Code sous licence MIT.
+
+## Historiques et statistiques (chefs)
+
+Trois commandes slash sont enregistrées au démarrage dans le serveur configuré et utilisables dans le salon des convois. Leurs réponses sont privées, avec pagination et sélection d’une demande pour afficher son détail et tous ses convois :
+
+- `/historique-demandes` : filtre `joueur` (pseudo exact), `etat`, période. Quantités initiales/restantes, création, validation, clôture, annulation et clôture manuelle sont conservées.
+- `/historique-convois` : filtre `expediteur`, `destinataire`, `demande`, période. Les déclarations annulées restent visibles et identifiées.
+- `/stats-convois` : envois et réceptions par joueur, nourriture/matériaux séparés, nombres de convois et moyennes quotidiennes. Filtre `joueur` facultatif.
+
+La période vaut 7 jours par défaut (aujourd’hui et les six jours précédents, heure de Paris). `periode:30j` affiche 30 jours ; `debut:01-10-2026 fin:11-10-2026` définit une période inclusive de 366 jours maximum. Les jours sans activité comptent dans la moyenne ; les joueurs sans mouvement ne sont pas listés. Les filtres par pseudo sont exacts, sans distinction de casse.
+
+Exemples : `/stats-convois periode:7j joueur:Achak`, `/historique-demandes etat:terminee`, `/historique-convois demande:11`.
+
+**Ces trois commandes exigent la présence dans `ADMIN_DISCORD_IDS` ET une association unique à un membre actuel UPTEP. Le droit chaîne seul ne suffit pas.** Bot et API vérifient les droits à chaque lecture, y compris pagination. Le bot lit `.env` depuis son répertoire de travail ; une suppression de la liste prend effet sans redémarrage. Le secret API nécessite le scope `rapports:read`. Les commandes peuvent apparaître dans le menu Discord à un non-chef, mais leur utilisation sera refusée.
+
+Les historiques des demandes utilisent la date de création ; les convois et statistiques utilisent `date_convoi`. Les statistiques excluent les convois annulés, et comptent les envois déclarés, sans confirmation de livraison dans le jeu. La fin d’une demande est la clôture des déclarations, automatique ou manuelle, pas une preuve d’arrivée. Les dates d’arrivée restent prévisionnelles. Aucune nouvelle table n’est nécessaire.
