@@ -18,9 +18,21 @@
           "enemy",
           "direction",
           "amount",
-          "date"
+          "date",
+          "evidence_id",
+          "occurrence"
         ],
         "properties": {
+          "evidence_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurrence": {
+            "type": "integer",
+            "minimum": 1
+          },
           "source_id": {
             "type": "string"
           },
