@@ -13,7 +13,7 @@ async function refresh(){
 }
 const ui=new UI({api,snapshot,state,refresh});
 const reports=new Reports({api,state});
-const terrain=new Terrain({guildId:cfg.guildId});
+const terrain=new Terrain({guildId:cfg.guildId,api});
 client.on(Events.InteractionCreate,async i=>{
  if(stopping)return;
  if(i.isChatInputCommand()&&i.commandName==='solde-terrain'){await terrain.handle(i).catch(e=>console.error('Réponse terrain impossible :',e.name));return;}
