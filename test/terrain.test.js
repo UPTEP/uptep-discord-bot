@@ -58,3 +58,14 @@ test('pending publication is recovered without scan or Codex',async()=>{
 test('database failure never publishes and is private',async()=>{
  const i=interaction();const t=new Terrain({guildId:'guild',api:{request:async(p,o)=>{if(o)throw Error('rollback');return {last_message_id:'0'};}},collect:async()=>({messages:[],scanned:0,attachments:0,lastMessageId:'0'})});await t.handle(i);assert.ok(!i.calls.some(c=>c[0]==='send'));assert.equal(i.calls.at(-1)[1].content,'rollback');
 });
+
+test('member Discord ID comes from unique Discord names, not necessarily source author',()=>{
+ const text='Butin chez Maitresse : 12 cm²';
+ const input=[{id:'700',author:'111',name:'Poster',username:'poster',text},{id:'701',author:'222',name:'Hardware',username:'hardware31',text:'bonjour'}];
+ const movement={...mov('700','12','gain',text),member:'hardware31',evidence_id:'700:0'};
+ const r=validateTerrain({movements:[movement],warnings:[]},input);
+ assert.equal(r.movements[0].member_discord_id,'222');
+ const ambiguous=[...input,{id:'702',author:'333',name:'hardware31',text:'bonjour'}];
+ assert.equal(validateTerrain({movements:[movement],warnings:[]},ambiguous).movements[0].member_discord_id,null);
+ assert.equal(validateTerrain({movements:[{...movement,member:null}],warnings:[]},input).movements[0].member_discord_id,null);
+});

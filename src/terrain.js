@@ -16,7 +16,7 @@ export async function collectTerrain(channel,{maxMessages=20000,maxChars=200000,
    attachments+=m.attachments?.size??0;
    const text=[m.content,...(m.embeds??[]).flatMap(e=>[e.title,e.description,...(e.fields??[]).flatMap(f=>[f.name,f.value])])].filter(Boolean).join('\n');
    if(!text.trim())continue;
-   const item={id:m.id,author:m.author?.id??null,name:m.member?.displayName??m.author?.username??null,date:m.createdAt.toISOString(),text};
+   const item={id:m.id,author:m.author?.id??null,name:m.member?.displayName??m.author?.username??null,username:m.author?.username??null,date:m.createdAt.toISOString(),text};
    size+=JSON.stringify(item).length;if(size>maxChars)fail('Conversation trop volumineuse pour cette version. Aucun bilan partiel calculé.');
    messages.push(item);
   }
@@ -76,6 +76,18 @@ export function validateTerrain(result,messages){
  }
  const missing=evidence.events.length-enriched.size;
  if(missing)warnings.push(`${missing} opération(s) standard omise(s) par l’IA conservée(s) grâce au contrôle du texte source. Identité/date non déduites pour ces lignes.`);
+ // Resolve identities from Discord metadata, never from a model-invented ID.
+ const identities=new Map(),normalizeName=s=>s.normalize('NFC').trim().toLocaleLowerCase('fr');
+ for(const source of messages){
+  if(!/^[1-9][0-9]{0,19}$/.test(source.author??''))continue;
+  for(const name of [source.name,source.username])if(typeof name==='string'&&name.trim()){
+   const key=normalizeName(name),ids=identities.get(key)??new Set();ids.add(source.author);identities.set(key,ids);
+  }
+ }
+ for(const m of movements){
+  const ids=typeof m.member==='string'?identities.get(normalizeName(m.member)):null;
+  m.member_discord_id=ids?.size===1?[...ids][0]:null;
+ }
  const totals=new Map();let gains=0n,losses=0n;
  for(const m of movements){const amount=BigInt(m.amount),key=m.enemy.normalize('NFC').toLocaleLowerCase('fr');const row=totals.get(key)??{enemy:m.enemy,gains:0n,losses:0n};if(m.direction==='gain'){gains+=amount;row.gains+=amount;}else{losses+=amount;row.losses+=amount;}totals.set(key,row);}
  return {movements,warnings,gains,losses,totals:[...totals.values()]};

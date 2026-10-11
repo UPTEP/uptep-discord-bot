@@ -159,3 +159,5 @@ Limites actuelles : une analyse à la fois, 20 000 messages et 200 000 caractèr
 - Répertoire de tâche temporaire supprimé à la fin, sortie JSON vérifiée. Les logs Codex ne sont ni envoyés à Discord ni conservés par ce lanceur. La connexion persistante reste privée au compte dédié.
 
 Tests : `npm test` couvre les contrôles d’identité/serveur, les réponses éphémères, la pagination, les limites, le calcul, les preuves sources, les doublons de sélection et les erreurs. Ne pas démarrer `src/index.js` pour un test hors ligne : le démarrage normal maintient le tableau public de convois existant.
+
+Les mouvements terrain conservent `member_discord_id` quand le nom du propriétaire du rapport correspond sans ambiguïté aux noms Discord des participants lus. Cet ID est résolu par le bot depuis les métadonnées Discord et non inventé par Luna. En cas d’ambiguïté il reste null ; `terrain_discord_reports.author_id` conserve séparément l’auteur du message source.
