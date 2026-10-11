@@ -3,7 +3,7 @@ import {UserError,quantity,amounts,dueDate,arrival,level,cleanText,fmt,escape,sh
 const row=(...components)=>new ActionRowBuilder().addComponents(components);
 const button=(id,label,style=ButtonStyle.Secondary)=>new ButtonBuilder().setCustomId('uptep:'+id).setLabel(label).setStyle(style);
 const field=(id,label,required=true,placeholder='')=>row(new TextInputBuilder().setCustomId(id).setLabel(label).setStyle(TextInputStyle.Short).setRequired(required).setMaxLength(160).setPlaceholder(placeholder));
-export const actions=()=>[row(button('request','Demander des ressources',ButtonStyle.Success),button('deliver','Déclarer un convoi',ButtonStyle.Success),button('browse','Consulter',ButtonStyle.Primary)),row(button('validate','Valider une demande (droit admin requis)',ButtonStyle.Primary),button('cancel','Annuler / Terminer une demande',ButtonStyle.Danger),button('cancelConvoy','Annuler un convoi déclaré',ButtonStyle.Danger)),row(button('adjust','Ajuster le restant',ButtonStyle.Primary))];
+export const actions=()=>[row(button('request','Demander des ressources',ButtonStyle.Success),button('deliver','Déclarer un convoi',ButtonStyle.Success),button('browse','Consulter',ButtonStyle.Primary)),row(button('validate','Valider une demande (droit admin requis)',ButtonStyle.Primary),button('cancel','Annuler / Terminer une demande',ButtonStyle.Danger),button('cancelConvoy','Annuler un convoi déclaré',ButtonStyle.Danger)),row(button('adjust','Modifier une demande',ButtonStyle.Primary))];
 export function boardPayload(demands){
  const open=demands.filter(d=>!d.fini);const done=demands.filter(d=>d.fini);
  const lines=open.slice(0,15).map(d=>`${d.valide?'🟢':'🟠'} **#${d.id} · ${escape(short(d.pseudo_demandeur,30))}** — ${escape(short(d.objet||'Ressources',40))}${d.niveau?' niv. '+d.niveau:''}\n🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}${d.valide&&!d.fini&&!d.annulee&&/^[1-9]\d*$/.test(String(d.iddemandeur))?' · [Livrer sur Fourmizzz](https://s5.fourmizzz.fr/commerce.php?ID='+d.iddemandeur+')':''}${d.date_souhaitee?' · souhaité le '+frenchDate(d.date_souhaitee):''}${d.valide?'\n'+progress(d):''}`);
@@ -31,7 +31,7 @@ export class UI {
      const sid=this.state.create(i.user.id,'adjust',{demand});
      const food=field('food','Pommes encore nécessaires',true),wood=field('wood','Matériaux encore nécessaires',true);
      food.components[0].setValue(String(demand.nbpomme_restant));wood.components[0].setValue(String(demand.nbmateriaux_restant));
-     return await i.showModal(new ModalBuilder().setCustomId('uptep:adjustForm:'+sid).setTitle(short('Ajuster le restant · #'+demand.id,45)).addComponents(food,wood));
+     return await i.showModal(new ModalBuilder().setCustomId('uptep:adjustForm:'+sid).setTitle(short('Modifier une demande · #'+demand.id,45)).addComponents(food,wood));
     }
     if(s.type==='deliver'){
      const sid=this.state.create(i.user.id,'deliver',{demand});
