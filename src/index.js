@@ -1,3 +1,4 @@
+import {Terrain,terrainCommand} from './terrain.js';
 import {Reports,reportCommands} from './reports.js';
 import {Client,GatewayIntentBits,Events,PermissionFlagsBits,MessageFlags} from 'discord.js';
 import {config} from './config.js';import {Api,Snapshot} from './api.js';import {State} from './state.js';import {UI,boardPayload} from './ui.js';
@@ -12,8 +13,10 @@ async function refresh(){
 }
 const ui=new UI({api,snapshot,state,refresh});
 const reports=new Reports({api,state});
+const terrain=new Terrain({guildId:cfg.guildId});
 client.on(Events.InteractionCreate,async i=>{
  if(stopping)return;
+ if(i.isChatInputCommand()&&i.commandName==='solde-terrain'){await terrain.handle(i).catch(e=>console.error('Réponse terrain impossible :',e.name));return;}
  const slash=i.isChatInputCommand()&&reportCommands.some(c=>c.name===i.commandName);
  const reportComponent=i.customId?.startsWith('uptep:report');
  if(!slash&&!i.customId?.startsWith('uptep:'))return;
@@ -51,8 +54,8 @@ client.once(Events.ClientReady,async()=>{
   const saved=state.board(key);if(saved)board=await channel.messages.fetch(saved).catch(e=>{if(e.code===10008)return null;throw e;});
   if(board&&board.author.id!==client.user.id)throw new Error('Le message enregistré appartient à un autre compte.');
   if(!board){const messages=await channel.messages.fetch({limit:100});board=messages.find(m=>m.author.id===client.user.id&&m.embeds.some(e=>e.footer?.text?.startsWith('UPTEP_CONVOYS_V1')))??null;if(board)state.setBoard(key,board.id);}
-  for(const command of reportCommands)await client.application.commands.create(command,cfg.guildId);
-  console.log('Trois commandes slash de rapports enregistrées.');
+  for(const command of [...reportCommands,terrainCommand])await client.application.commands.create(command,cfg.guildId);
+  console.log('Commandes slash de rapports et solde-terrain enregistrées.');
   await refresh();timer=setInterval(()=>refresh().catch(e=>console.error('Actualisation impossible :',e.name)),60000);
   console.log('Bot connecté ; tableau prêt dans le salon configuré.');
  }catch(e){console.error('Démarrage impossible :',e.message);await client.destroy();process.exitCode=1;}

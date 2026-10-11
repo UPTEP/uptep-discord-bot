@@ -128,3 +128,28 @@ Les quantités initiales et les convois déclarés sont conservés. Les ajusteme
 Les restants peuvent être corrigés à la hausse dans la limite du montant initial moins les convois non annulés. Si les deux restants sont mis à zéro, la demande est terminée manuellement. Si un convoi ou un autre ajustement change le restant pendant la saisie, le bot refuse cette confirmation : repartir de **Modifier une demande** pour ouvrir un formulaire à jour.
 
 Déploiement : appliquer `app/bot-demand-adjustments.sql` du dépôt du site sur une base existante, déployer l’API correspondante, et ajouter le scope `demandes:adjust` au secret du bot. Les nouvelles installations utilisent le schéma complet de la base UPTEP, qui inclut cette table.
+
+## `/solde-terrain` — test privé
+
+Commande sans paramètre, utilisable dans les salons textuels et fils du serveur configuré. **Seul l’ID Discord `1544667516364652659` peut l’exécuter**, indépendamment de `ADMIN_DISCORD_IDS` et des droits chaîne. Les autres utilisateurs peuvent voir la commande mais sont refusés avant toute lecture ou analyse.
+
+Le bot lit l’historique accessible du salon/fil courant (pas les autres fils), puis transmet ses textes et embeds à `codex exec` avec Luna. Le résultat est une réponse **éphémère**, visible seulement par l’utilisateur de la commande ; aucun `channel.send`, message public ou message privé direct n’est utilisé. Un fichier texte joint donne les mouvements retenus, les citations et liens sources, les avertissements et le solde par adversaire. Les sommes sont calculées en BigInt par Node, du point de vue UPTEP. Un membre inconnu reste inconnu : l’auteur Discord n’est pas automatiquement assimilé au propriétaire du rapport.
+
+Activer **Message Content Intent** dans le portail développeur Discord → Bot. Le bot doit avoir Voir le salon et Lire l’historique, y compris l’accès au fil privé concerné. Pas de permission Administrateur nécessaire. La commande vérifie le privilège de contenu avant de lire l’historique via REST ; elle n’ajoute pas de souscription Gateway aux messages.
+
+Titres et détails ne doivent pas être additionnés deux fois. L’IA reçoit des règles pour les rapports incomplets, les recopies, les contradictions et les dates. Les références, citations et montants sont revérifiés dans le texte original avant totalisation ; un résultat incohérent est refusé. L’interprétation IA reste à vérifier dans le détail, en particulier si plusieurs messages se chevauchent. Les pièces jointes/images ne sont pas analysées et sont signalées. La date d’envoi Discord n’est pas assimilée à la date d’attaque.
+
+Limites actuelles : une analyse à la fois, 20 000 messages et 200 000 caractères de données JSON, délai Codex de 8 minutes. Un dépassement refuse le bilan plutôt que tronquer silencieusement la conversation. Relancer la commande relit l’historique ; pas d’écriture en BDD. Les messages sont envoyés à OpenAI pour l’analyse et consomment les quotas de la connexion Codex configurée.
+
+### Lanceur Codex isolé
+
+`CODEX_MODEL=gpt-6-luna` et `TERRAIN_CODEX_RUNNER=/usr/local/libexec/uptep-terrain-codex` configurent le bot. Le lanceur Python fourni dans `ops/` fonctionne sous le compte système dédié `uptep-codex` (home `/var/lib/uptep-codex`, shell nologin). Son installation et son authentification nécessitent une configuration administrateur explicite ; ne jamais versionner `auth.json`.
+
+- Binaire Codex : `/opt/uptep-codex/codex`, schéma : `/opt/uptep-codex/terrain-schema.json` ; détenus par root, non modifiables par le bot.
+- Lanceur : `/usr/local/libexec/uptep-terrain-codex`, root, mode 755. Seul argument accepté : `gpt-6-luna`.
+- Home, `.codex` et `jobs` du compte dédié : mode 700 ; connexion Codex privée dans `.codex`, mode 600. Le compte ne doit pas avoir accès aux secrets du site/bot.
+- Si approuvée par l’administrateur, règle sudo strictement limitée : `uptep ALL=(uptep-codex) NOPASSWD: /usr/local/libexec/uptep-terrain-codex gpt-6-luna`.
+- Entrée via stdin, jamais via une commande shell interpolée. Environnement filtré, pas de token Discord/API UPTEP transmis. Configuration utilisateur ignorée, shell/apps/navigation/multi-agent désactivés, sandbox lecture seule, session éphémère.
+- Répertoire de tâche temporaire supprimé à la fin, sortie JSON vérifiée. Les logs Codex ne sont ni envoyés à Discord ni conservés par ce lanceur. La connexion persistante reste privée au compte dédié.
+
+Tests : `npm test` couvre les contrôles d’identité/serveur, les réponses éphémères, la pagination, les limites, le calcul, les preuves sources, les doublons de sélection et les erreurs. Ne pas démarrer `src/index.js` pour un test hors ligne : le démarrage normal maintient le tableau public de convois existant.

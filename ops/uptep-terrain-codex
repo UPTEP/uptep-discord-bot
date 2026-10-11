@@ -1,0 +1,26 @@
+#!/usr/bin/python3
+"""Fixed sudo entry point: stdin text -> Codex structured JSON. No caller env/secrets."""
+import os,sys,subprocess,tempfile,pathlib,signal
+if len(sys.argv)!=2 or sys.argv[1] not in ('gpt-6-luna',):
+ sys.exit(2)
+prompt=sys.stdin.buffer.read(900001)
+if len(prompt)>900000:sys.exit(2)
+with tempfile.TemporaryDirectory(prefix='job-',dir='/var/lib/uptep-codex/jobs') as task:
+ output=str(pathlib.Path(task)/'result.json')
+ args=['/opt/uptep-codex/codex','--no-daemon','exec','--ignore-user-config','--ephemeral','--skip-git-repo-check','--sandbox','read-only','--model',sys.argv[1],'-c','web_search="disabled"','-c','model_reasoning_effort="medium"']
+ for feature in ['shell_tool','unified_exec','apps','browser_use','computer_use','multi_agent','skill_search']:
+  args+=['--disable',feature]
+ args+=['--output-schema','/opt/uptep-codex/terrain-schema.json','--output-last-message',output,'-']
+ env={'PATH':'/usr/bin:/bin','HOME':'/var/lib/uptep-codex','CODEX_HOME':'/var/lib/uptep-codex/.codex','LANG':'C.UTF-8'}
+ proc=subprocess.Popen(args,cwd=task,env=env,stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+ def stop(*unused):
+  try:os.killpg(proc.pid,signal.SIGKILL)
+  except ProcessLookupError:pass
+  raise SystemExit(1)
+ signal.signal(signal.SIGTERM,stop)
+ try:proc.communicate(prompt,timeout=480)
+ except subprocess.TimeoutExpired:stop()
+ if proc.returncode!=0 or not pathlib.Path(output).is_file():sys.exit(1)
+ data=pathlib.Path(output).read_bytes()
+ if len(data)>2000000:sys.exit(1)
+ sys.stdout.buffer.write(data)
