@@ -2,20 +2,15 @@ import {SlashCommandBuilder,EmbedBuilder,MessageFlags,PermissionFlagsBits} from 
 import {escape as esc,short} from './domain.js';
 export const chainCommand=new SlashCommandBuilder().setName('chaine').setDescription('Publier la chaîne de l’alliance avec les liens pour flooder').toJSON();
 export function chainPayloads(members){
- const chunks=[];let rows=[];
+ const chunks=[];let lines=[];
  for(const m of members){
   if(!/^[1-9][0-9]{0,18}$/.test(m.player_id))throw Error('Identifiant joueur invalide.');
-  rows.push({grade:esc(m.chaine_grade??'Sans grade')+(m.sort_order==null?'':' · '+m.sort_order),player:`**${esc(short(m.pseudo,32))}**`,link:`[⚔️ Flooder](https://s5.fourmizzz.fr/ennemie.php?Attaquer=${m.player_id}&lieu=1)`});
-  if(rows.length===8){chunks.push(rows);rows=[];}
+  const grade=esc(m.chaine_grade??'Sans grade')+(m.sort_order==null?'':' '+m.sort_order);
+  const line=`**${esc(short(m.pseudo,100))}** · ${grade} · [Flooder](https://s5.fourmizzz.fr/ennemie.php?Attaquer=${m.player_id}&lieu=1)`;
+  if(lines.join('\n').length+line.length+1>4000){chunks.push(lines.join('\n'));lines=[];}lines.push(line);
  }
- if(rows.length||!chunks.length)chunks.push(rows);
- return chunks.map((rows,index)=>{
-  const embed=new EmbedBuilder().setColor(0xd4a347).setTitle('🚌 UPTEP · La chaîne');
-  if(rows.length)embed.addFields({name:'Grade',value:rows.map(r=>r.grade).join('\n'),inline:true},{name:'Joueur',value:rows.map(r=>r.player).join('\n'),inline:true},{name:'Flooder',value:rows.map(r=>r.link).join('\n'),inline:true});
-  else embed.setDescription('Aucun membre présent dans le dernier relevé de l’alliance.');
-  embed.setFooter({text:`${members.length} membres · Page ${index+1}/${chunks.length} · Ordre de chaîne`});
-  return {embeds:[embed],allowedMentions:{parse:[]}};
- });
+ if(lines.length)chunks.push(lines.join('\n'));if(!chunks.length)chunks.push('Aucun membre présent dans le dernier relevé de l’alliance.');
+ return chunks.map((description,index)=>({embeds:[new EmbedBuilder().setColor(0x2b638c).setTitle('UPTEP · Chaîne de l’alliance').setDescription(description).setFooter({text:`${members.length} membres · Ordre de chaîne${chunks.length>1?' · Suite '+(index+1)+'/'+chunks.length:''}`})],allowedMentions:{parse:[]}}));
 }
 export class Chain {
  constructor({api,guildId}){Object.assign(this,{api,guildId});}

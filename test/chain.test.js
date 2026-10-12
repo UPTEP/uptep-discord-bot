@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {Cha
 const m={player_id:'9',pseudo:'[Test]',chaine_grade:'Passeur',sort_order:5};
 test('links use player ID, escaped names, preserve chain order and split large lists',()=>{
  const rows=Array.from({length:100},(_,n)=>({...m,player_id:String(n+1)})),payloads=chainPayloads(rows);assert.ok(payloads.length>1);
- const text=payloads.map(p=>p.embeds[0].data.fields.map(f=>f.value).join('\n')).join('\n');assert.equal((text.match(/\[⚔️ Flooder\]/g)||[]).length,100);assert.match(text,/Attaquer=9&lieu=1/);assert.ok(text.includes('\\[Test\\]'));for(const p of payloads){assert.deepEqual(p.embeds[0].data.fields.map(f=>f.name),['Grade','Joueur','Flooder']);assert.ok(p.embeds[0].data.fields.every(f=>f.inline&&f.value.length<=1024));assert.deepEqual(p.allowedMentions,{parse:[]});}
+ const text=payloads.map(p=>p.embeds[0].data.description).join('\n');assert.equal((text.match(/\[Flooder\]/g)||[]).length,100);assert.match(text,/Attaquer=9&lieu=1/);assert.ok(text.includes('\\[Test\\]'));for(const p of payloads){assert.ok(p.embeds[0].data.description.length<=4000);assert.deepEqual(p.allowedMentions,{parse:[]});}
  assert.throws(()=>chainPayloads([{...m,player_id:'9&evil=1'}]));assert.equal(chainPayloads([]).length,1);
 });
 test('publishes publicly after identity API check, keeps errors private',async()=>{
