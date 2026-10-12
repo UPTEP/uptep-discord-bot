@@ -161,3 +161,11 @@ Limites actuelles : une analyse à la fois, 20 000 messages et 200 000 caractèr
 Tests : `npm test` couvre les contrôles d’identité/serveur, les réponses éphémères, la pagination, les limites, le calcul, les preuves sources, les doublons de sélection et les erreurs. Ne pas démarrer `src/index.js` pour un test hors ligne : le démarrage normal maintient le tableau public de convois existant.
 
 Les mouvements terrain conservent `member_discord_id` quand le nom du propriétaire du rapport correspond sans ambiguïté aux noms Discord des participants lus. Cet ID est résolu par le bot depuis les métadonnées Discord et non inventé par Luna. En cas d’ambiguïté il reste null ; `terrain_discord_reports.author_id` conserve séparément l’auteur du message source.
+
+## `/livraisons vitesse:7`
+
+Disponible à tous les membres associés à un joueur UPTEP via `chaine_members.iddiscord`, dans tous les salons et fils du serveur configuré. Aucun compte sur le site nécessaire. Le niveau de **Vitesse d’attaque** est obligatoire (0 à 999), utilisé uniquement pour ce calcul et jamais sauvegardé.
+
+La réponse est privée et liste les demandes validées en cours des autres joueurs, avec leurs ressources restantes, la distance arrondie au supérieur et le temps aller estimé. Le tri utilise la distance exacte. Les coordonnées viennent des derniers relevés fzzz ; les coordonnées manquantes sont signalées et placées en dernier. Les pages de huit demandes se parcourent avec Précédent/Suivant, réservés à l’auteur de la commande. Une demande par ligne, même si un destinataire en a plusieurs. Aucun convoi n’est envoyé ou déclaré.
+
+Endpoint : `GET /livraisons?discord_id=…&vitesse=7&page=1`, scope existant `demandes:read`. Une association absente ou ambiguë invite à contacter NoobEnCDI. La formule de trajet est celle du userscript UPTEP : `round(86400 × (1 − exp(−distance / 350)) × 7.375 × 0.9^vitesse)`.
