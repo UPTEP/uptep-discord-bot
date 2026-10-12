@@ -13,6 +13,12 @@ test('Rapports Fourmizzz : quantités, destinataire et arrivée, jamais le retou
  const now=new Date('2026-10-11T09:00:00.123Z');
  assert.deepEqual(convoyReport('Vous allez livrer 0 nourritures et 15 000 materiaux à SSovietsky dans 11H 52m 36s - Retour le 11 oct. à 21h14','SSovietsky',now),{nbpomme:'0',nbmateriaux:'15000',date_arrivee:'2026-10-11T20:52:36Z'});
  assert.deepEqual(convoyReport('Vous allez livrer 40 000 nourritures et 0 materiaux à Justixon dans 6H 55m 57s - Retour le 11 oct. à 03h33 - Annuler','Justixon',now),{nbpomme:'40000',nbmateriaux:'0',date_arrivee:'2026-10-11T15:55:57Z'});
+ const bullet='- Vous allez livrer 40 000 nourritures et 0 materiaux à Justixon dans 6H 55m 57s - Retour le 11 oct. à 03h33 - Annuler';
+ const expected={nbpomme:'40000',nbmateriaux:'0',date_arrivee:'2026-10-11T15:55:57Z'};
+ assert.deepEqual(convoyReport(bullet,'Justixon',now),expected);
+ assert.deepEqual(convoyReport('**'+bullet+'**','Justixon',now),expected);
+ assert.deepEqual(convoyReport('- Vous allez livrer **40 000** nourritures et **0** matériaux à **Justixon** dans **6H 55m 57s**','Justixon',now),expected);
+ assert.throws(()=>convoyReport(bullet,'Achak',now),/Justixon/);
  assert.throws(()=>convoyReport('Vous allez livrer 1 nourritures et 0 materiaux à Justixon dans 1H','Achak',now),/Justixon/);
  assert.throws(()=>convoyReport('rapport invalide','Achak',now));
 });

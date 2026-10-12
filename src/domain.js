@@ -31,8 +31,8 @@ export const fmt=value=>BigInt(value??'0').toLocaleString('fr-FR');
 export const escape=text=>String(text??'').replace(/[\\*_`~|<>\[\]()]/g,'\\$&').replace(/[\r\n]+/g,' ');
 export function short(text,size=90){return String(text).length>size?String(text).slice(0,size-1)+'…':String(text);}
 export function convoyReport(raw,recipient,now=new Date()){
- const text=String(raw).normalize('NFC').replace(/\s+/g,' ').trim();
- const m=/^Vous allez livrer ([\d ]+) nourritures? et ([\d ]+) mat[eé]riaux? [àa] (.+?) dans ((?:\d+\s*[jHhms]\s*)+)(?:\s*-\s*Retour le [^-]+)?(?:\s*-\s*Annuler)?\s*$/iu.exec(text);
+ const text=String(raw).normalize('NFC').replace(/\*\*/g,'').replace(/\s+/g,' ').trim();
+ const m=/^(?:-\s*)?Vous allez livrer ([\d ]+) nourritures? et ([\d ]+) mat[eé]riaux? [àa] (.+?) dans ((?:\d+\s*[jHhms]\s*)+)(?:\s*-\s*Retour le [^-]+)?(?:\s*-\s*Annuler)?\s*$/iu.exec(text);
  if(!m)throw new UserError('Rapport non reconnu. Colle une seule ligne « Vous allez livrer … dans … », avec ou sans le retour.');
  const target=m[3].trim();if(target.toLocaleLowerCase('fr')!==String(recipient).normalize('NFC').trim().toLocaleLowerCase('fr'))throw new UserError('Ce rapport est destiné à '+target+', mais la demande choisie concerne '+recipient+'. Choisis la bonne demande.');
  return {...amounts(m[1],m[2]),date_arrivee:arrival(m[4],now)};
