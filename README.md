@@ -1,6 +1,18 @@
 # UPTEP — Bot Discord
 
-Bot Node.js pour demander des ressources, déclarer des convois, valider, terminer ou annuler des demandes et annuler des déclarations. Trois commandes slash permettent aussi aux chefs de consulter les historiques et les statistiques des convois. Il utilise exclusivement l’API UPTEP et ne se connecte pas directement à PostgreSQL.
+Bot Node.js pour demander des ressources, déclarer des convois, valider, terminer ou annuler des demandes et annuler des déclarations. Les commandes slash permettent de consulter les historiques et statistiques, de classer les livraisons par distance et de suivre le solde de terrain. Le bot annonce les validations dans le salon et notifie les destinataires des convois par MP. Il utilise exclusivement l’API UPTEP et ne se connecte pas directement à PostgreSQL.
+
+## Repères rapides
+
+| Fonction | Accès | Résultat |
+| --- | --- | --- |
+| `/livraisons vitesse:7` | Joueur associé à Discord | Liste privée des demandes validées, distances et trajets estimés. |
+| `/historique-demandes`, `/historique-convois`, `/stats-convois` | Chefs de `ADMIN_DISCORD_IDS` associés | Historiques et statistiques privés. |
+| `/solde-terrain` | ID de test autorisé, voir section dédiée | Lecture incrémentale des rapports, sauvegarde via l’API et solde public. |
+| Validation d’une demande via le bot | Droit chaîne ou administrateur associé | Annonce `@everyone` dans le salon des convois. |
+| Déclaration d’un convoi via le bot | Joueur associé | MP au demandeur : expéditeur, quantités et arrivée prévue. |
+
+Les MP bloqués sont abandonnés sans annonce de secours dans le salon. Les notifications concernent les nouvelles opérations effectuées via le bot et ne sont pas envoyées rétroactivement.
 
 ## Installation
 
@@ -18,7 +30,7 @@ Avec PM2 : `pm2 start ecosystem.config.cjs`, puis `pm2 save`. Adapter le chemin 
 
 ## Accès et fonctionnement
 
-Le bot nécessite Voir le salon, Envoyer des messages, Intégrer des liens et Voir les anciens messages. Aucun intent privilégié ni permission Administrateur Discord n’est requis. Un seul serveur est actif par processus. Le tableau et ses boutons utilisent le salon défini par `CONVOY_CHANNEL_ID` ; les trois commandes de rapports sont utilisables dans tous les salons de ce serveur.
+Le bot nécessite Voir le salon, Envoyer des messages, Intégrer des liens et Voir les anciens messages. La permission « Mentionner @everyone, @here et tous les rôles » est nécessaire pour les annonces de validation. Message Content Intent est nécessaire uniquement au suivi `/solde-terrain`. La permission Administrateur Discord n’est pas nécessaire. Un seul serveur est actif par processus. Le tableau et ses boutons utilisent le salon défini par `CONVOY_CHANNEL_ID` ; les commandes slash sont utilisables dans tous les salons et fils accessibles de ce serveur, sous réserve des droits propres à chaque commande.
 
 Les joueurs doivent être associés par leur ID Discord dans `chaine_members` et présents dans UPTEP. Le droit chaîne d’un compte actif ou la liste `ADMIN_DISCORD_IDS` accorde les actions administratives. Cette liste est relue par l’API sur le même serveur dans `/home/uptep/discord-bot/.env` ; déplacer le bot sur une autre machine nécessite d’adapter cette configuration côté API. Elle ne contourne pas l’association obligatoire.
 
@@ -28,7 +40,7 @@ Changer les IDs de serveur/salon dans `.env`, puis redémarrer pour basculer. Un
 
 ## Données locales
 
-`data/state.json` contient l’ID du tableau et les confirmations privées avec leur commande idempotente. Garder ce dossier lors des déploiements. Ne jamais publier ce fichier ni `.env`. Les réponses privées expirent après cinq minutes ; les messages de réussite après dix secondes. Ces minuteries ne survivent pas à un redémarrage du processus.
+`data/state.json` contient l’ID du tableau, les confirmations privées avec leur commande idempotente et les files/statuts des annonces de validation et des MP de convois. Garder ce dossier lors des déploiements. Ne jamais publier ce fichier ni `.env`. Les réponses privées des boutons du tableau et des rapports sont supprimées après cinq minutes ; les messages de réussite après dix secondes. `/livraisons` reste éphémère mais n’utilise pas cette minuterie. `/solde-terrain` supprime sa progression privée après succès et publie le solde dans le salon. Ces minuteries ne survivent pas à un redémarrage du processus.
 
 `npm test` exécute les tests locaux sans envoyer de messages Discord ni modifier l’API. Les secrets ne sont pas inclus. Code sous licence MIT.
 
