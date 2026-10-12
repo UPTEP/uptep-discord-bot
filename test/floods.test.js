@@ -2,6 +2,27 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {parseFloods} from '../src/flood-parser.js';import {Floods,floodBoard} from '../src/floods.js';
 const now=new Date('2026-10-12T11:25:46Z');
 const line='- Vous allez attaquer [**l-o-l**](https://s5.fourmizzz.fr/Membre.php?Pseudo=l-o-l)**([UPTEP](https://s5.fourmizzz.fr/classementAlliance.php?alliance=UPTEP))** (Terrain de chasse) dans **27 minutes 14 secondes**';
+test('rapport compact sans lieu, avec ou sans tiret : les deux attaques sont conservées',()=>{
+ for(const prefix of ['- ','','• ']){
+  const r=parseFloods(`${prefix}Vous allez attaquer Hardware(UPTEP) dans 8 heures 32 minutes 28 secondes\n\n${prefix}Vous allez attaquer Hardware(UPTEP) dans 8 heures 32 minutes 33 secondes`,now);
+  assert.deepEqual(r.floods.map(f=>({pseudo:f.pseudo,location:f.location,arrival:f.arrival_at})),[
+   {pseudo:'Hardware',location:'Terrain de chasse',arrival:'2026-10-12T19:58:14Z'},
+   {pseudo:'Hardware',location:'Terrain de chasse',arrival:'2026-10-12T19:58:19Z'}
+  ]);
+  assert.equal(r.warnings.length,2);assert.ok(r.warnings.every(w=>w.includes('lieu absent')));
+ }
+ const plain=parseFloods('Vous allez attaquer foo_bar dans 1H2m3s',now);
+ assert.equal(plain.floods[0].pseudo,'foo_bar');assert.equal(plain.floods[0].arrival_at,'2026-10-12T12:27:49Z');
+});
+test('les lieux explicites restent prioritaires et les rapports incomplets sont refusés',()=>{
+ for(const [location,expected] of [['Terrain de chasse','Terrain de chasse'],['Dôme (12)','Dôme'],['Loge Impériale (3)','Loge']]){
+  const r=parseFloods(`Vous allez attaquer Hardware(UPTEP) (${location}) dans 8 heures`,now);
+  assert.equal(r.floods[0].location,expected);assert.equal(r.warnings.length,0);
+ }
+ assert.throws(()=>parseFloods('Vous allez attaquer Hardware(UPTEP) (Lieu inconnu) dans 8 heures',now));
+ assert.throws(()=>parseFloods('Vous allez attaquer Hardware(UPTEP) dans bientôt',now));
+ assert.throws(()=>parseFloods('Vous allez attaquer Hardware(UPTEP) dans 8 heures 2 heures',now));
+});
 test('markdown and plain text, optional troops/clock, repeated attacks preserved',()=>{
  const r=parseFloods(line+'\n*Troupes en attaques : 2 213 Jeunes Soldates Naines.*\n*Arrivée à 13h53*\n'+line+'\n'+line,now);
  assert.equal(r.floods.length,3);assert.equal(r.floods[0].pseudo,'l-o-l');assert.equal(r.floods[0].arrival_at,'2026-10-12T11:53:00Z');assert.match(r.floods[0].troops,/2 213/);assert.equal(r.floods[1].troops,null);assert.equal(r.warnings.length,0);

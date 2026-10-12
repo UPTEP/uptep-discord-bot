@@ -8,7 +8,11 @@ export function parseFloods(raw,now=new Date()){
  const warnings=[];if(text.slice(0,starts[0].index).replace(/[\s\-–•]/g,''))warnings.push('Du texte avant le premier flood a été ignoré.');
  const floods=starts.map((start,i)=>{
   let block=text.slice(start.index,starts[i+1]?.index??text.length).trim().replace(/[\s\-–•]+$/,'');
-  const m=/^Vous allez attaquer\s+(.+?)\s*\((Terrain de chasse|D[oô]me(?:\s*\(\d+\))?|Loge(?: Imp[eé]riale)?(?:\s*\(\d+\))?)\)\s+dans\s+([\s\S]+)$/i.exec(block);
+  let m=/^Vous allez attaquer\s+(.+?)\s*\((Terrain de chasse|D[oô]me(?:\s*\(\d+\))?|Loge(?: Imp[eé]riale)?(?:\s*\(\d+\))?)\)\s+dans\s+([\s\S]+)$/i.exec(block);
+  if(!m){
+   const compact=/^Vous allez attaquer\s+([^()\r\n]+?(?:\s*\([^()\r\n]*\))?)\s+dans\s+([\s\S]+)$/i.exec(block);
+   if(compact){m=[compact[0],compact[1],'Terrain de chasse',compact[2]];warnings.push(`Flood ${i+1} : lieu absent du relevé, Terrain de chasse utilisé. Vérifie avant de confirmer.`);}
+  }
   if(!m)throw new UserError(`Flood ${i+1} incomplet : pseudo, lieu ou durée non reconnu. Aucun flood enregistré.`);
   const pseudo=m[1].replace(/\s*\([^()]*\)\s*$/,'').trim();if(!pseudo||pseudo.length>100)throw new UserError(`Pseudo invalide au flood ${i+1}.`);
   let rest=m[3],seconds=0,parts=0;const units=new Set();

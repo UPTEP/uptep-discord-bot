@@ -217,7 +217,7 @@ Affiche un guide privé des sept commandes slash, des options usuelles et des dr
 
 Configurer `FLOOD_CHANNEL_ID` dans `.env` puis redémarrer. Le tableau public est retrouvé par son ID sauvegardé ou son marqueur `UPTEP_FLOODS_V1` et n’est pas recréé à chaque démarrage. Le salon doit appartenir au serveur configuré ; permissions nécessaires : voir, écrire, lire l’historique et intégrer des liens. Un défaut d’accès est réessayé chaque minute sans interrompre les convois.
 
-- **Déclarer des floods** : coller jusqu’à 4 000 caractères / 20 attaques dans une modale. Le bot reconnaît le texte brut ou les liens Markdown, les durées en jours/heures/minutes/secondes ou j/h/m/s, les troupes facultatives et l’heure facultative. Terrain de chasse, Dôme et Loge sont reconnus.
+- **Déclarer des floods** : coller jusqu’à 4 000 caractères / 20 attaques dans une modale. Le bot reconnaît le texte brut ou les liens Markdown, les durées en jours/heures/minutes/secondes ou j/h/m/s, les troupes facultatives et l’heure facultative. Terrain de chasse, Dôme et Loge sont reconnus. Les lignes peuvent commencer par un tiret ou non. Le format court `Vous allez attaquer Hardware(UPTEP) dans 8 heures 32 minutes 28 secondes` est accepté : si le lieu manque, Terrain de chasse est utilisé avec un avertissement à vérifier avant confirmation.
 - **Tous les floods en cours** : liste privée paginée par arrivée, cinq attaques par page.
 - **Floods vers moi** : même liste, filtrée sur le joueur associé à l’ID Discord.
 
