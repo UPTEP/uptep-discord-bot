@@ -193,3 +193,11 @@ Les annonces sont conservées dans le fichier privé `data/state.json`, avec le 
 Chaque convoi déclaré avec succès via le bot déclenche un MP au `discord_demandeur` de la demande. Il contient le numéro de demande/convoi, l’expéditeur, les quantités et l’arrivée prévue (date Discord dans le fuseau du destinataire, ou « Non renseignée »). Il s’agit d’une déclaration, pas d’une confirmation de réception dans le jeu.
 
 Les MP bloqués ou destinataires inaccessibles sont abandonnés sans message public de secours. Les erreurs temporaires sont réessayées à l’actualisation du tableau. La file privée dans `data/state.json` conserve le statut par convoi pour éviter les répétitions ; aucune notification rétroactive. Comme pour les annonces, une coupure prolongée entre envoi et sauvegarde peut entraîner un doublon malgré le nonce Discord. Aucun changement de schéma SQL nécessaire.
+
+## `/chaine`
+
+Publie dans le salon ou fil courant un embed avec tous les membres présents de l’alliance UPTEP, leur grade et un lien **Flooder** : `https://s5.fourmizzz.fr/ennemie.php?Attaquer=ID_JOUEUR&lieu=1`. La commande est disponible aux joueurs associés à Discord, dans tous les salons accessibles du serveur configuré. Le bot doit pouvoir écrire et intégrer des liens. Aucune mention n’est déclenchée ; les erreurs restent privées.
+
+Le classement suit celui du site : grades prioritaires, Passeurs du plus grand numéro au plus petit, autres grades croissants, puis membres sans grade. Les membres sortis de l’alliance ne sont pas inclus. Si nécessaire, la liste est répartie en plusieurs embeds publics. Chaque exécution publie une nouvelle liste ; les anciens messages ne sont pas actualisés automatiquement. Les liens ouvrent la page d’attaque sans lancer eux-mêmes une attaque ni vérifier la portée.
+
+API : `GET /chaine?discord_id=…`, scope existant `membres:read`. Aucun changement de schéma de base.

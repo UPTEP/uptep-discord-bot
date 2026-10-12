@@ -1,3 +1,4 @@
+import {Chain,chainCommand} from './chain.js';
 import {ValidationNotifications,ConvoyNotifications} from './notifications.js';
 import {Deliveries,deliveryCommand} from './deliveries.js';
 import {Terrain,terrainCommand} from './terrain.js';
@@ -18,9 +19,11 @@ async function refresh(){
 const ui=new UI({api,snapshot,state,refresh,notifications,convoyNotifications});
 const reports=new Reports({api,state});
 const deliveries=new Deliveries({api,guildId:cfg.guildId});
+const chain=new Chain({api,guildId:cfg.guildId});
 const terrain=new Terrain({guildId:cfg.guildId,api});
 client.on(Events.InteractionCreate,async i=>{
  if(stopping)return;
+ if(i.isChatInputCommand()&&i.commandName==='chaine'){await chain.handle(i).catch(e=>console.error('Publication chaîne impossible :',e.name));return;}
  if((i.isChatInputCommand()&&i.commandName==='livraisons')||i.customId?.startsWith('uptep:delivery:')){await deliveries.handle(i).catch(e=>console.error('Réponse livraisons impossible :',e.name));return;}
  if(i.isChatInputCommand()&&i.commandName==='solde-terrain'){await terrain.handle(i).catch(e=>console.error('Réponse terrain impossible :',e.name));return;}
  const slash=i.isChatInputCommand()&&reportCommands.some(c=>c.name===i.commandName);
@@ -60,7 +63,7 @@ client.once(Events.ClientReady,async()=>{
   const saved=state.board(key);if(saved)board=await channel.messages.fetch(saved).catch(e=>{if(e.code===10008)return null;throw e;});
   if(board&&board.author.id!==client.user.id)throw new Error('Le message enregistré appartient à un autre compte.');
   if(!board){const messages=await channel.messages.fetch({limit:100});board=messages.find(m=>m.author.id===client.user.id&&m.embeds.some(e=>e.footer?.text?.startsWith('UPTEP_CONVOYS_V1')))??null;if(board)state.setBoard(key,board.id);}
-  for(const command of [...reportCommands,terrainCommand,deliveryCommand])await client.application.commands.create(command,cfg.guildId);
+  for(const command of [...reportCommands,terrainCommand,deliveryCommand,chainCommand])await client.application.commands.create(command,cfg.guildId);
   console.log('Commandes slash de rapports et solde-terrain enregistrées.');
   await refresh();timer=setInterval(()=>refresh().catch(e=>console.error('Actualisation impossible :',e.name)),60000);
   console.log('Bot connecté ; tableau prêt dans le salon configuré.');
