@@ -206,3 +206,19 @@ API : `GET /chaine?discord_id=…`, scope existant `membres:read`. Aucun changem
 ## `/aide`
 
 Affiche un guide privé des sept commandes slash, des options usuelles et des droits requis. Présente également les boutons du tableau, les notifications et la procédure d’association auprès de NoobEnCDI. Disponible dans tous les salons et fils accessibles du serveur configuré, sans compte joueur associé ni appel API. Aucun message public n’est envoyé.
+
+## Suivi des floods
+
+Configurer `FLOOD_CHANNEL_ID` dans `.env` puis redémarrer. Le tableau public est retrouvé par son ID sauvegardé ou son marqueur `UPTEP_FLOODS_V1` et n’est pas recréé à chaque démarrage. Le salon doit appartenir au serveur configuré ; permissions nécessaires : voir, écrire, lire l’historique et intégrer des liens. Un défaut d’accès est réessayé chaque minute sans interrompre les convois.
+
+- **Déclarer des floods** : coller jusqu’à 4 000 caractères / 20 attaques dans une modale. Le bot reconnaît le texte brut ou les liens Markdown, les durées en jours/heures/minutes/secondes ou j/h/m/s, les troupes facultatives et l’heure facultative. Terrain de chasse, Dôme et Loge sont reconnus.
+- **Tous les floods en cours** : liste privée paginée par arrivée, cinq attaques par page.
+- **Floods vers moi** : même liste, filtrée sur le joueur associé à l’ID Discord.
+
+L’expéditeur doit être associé à un joueur UPTEP. L’API résout chaque pseudo exact (casse ignorée) dans les joueurs présents de s5 puis recherche son ID Discord dans la chaîne. Les cibles inconnues ou sans association unique sont signalées et peuvent être enregistrées sans notification. La confirmation privée affiche les informations reconnues et les avertissements ; aucun flood n’est créé avant confirmation. Une attaque incomplète bloque tout le lot. Des attaques identiques restent distinctes, mais un retry d’une même confirmation n’ajoute rien.
+
+L’arrivée est calculée au moment de l’envoi de la modale à partir de la durée restante. Le temps de confirmation ne la décale pas. L’heure copiée est comparée à l’heure de Paris (tolérance de deux minutes), un écart est signalé et la durée reste prioritaire. Coller un relevé récent : un texte ancien peut donner une arrivée fausse. Un formulaire expire après une heure ; une arrivée déjà passée impose de recopier le relevé. Les troupes sont conservées sous forme de texte facultatif, pas converties en terrain gagné.
+
+Après confirmation, le bot envoie un MP par flood aux destinataires identifiés. MP bloqués : abandon silencieux, sans message public. Erreurs temporaires : nouvelles tentatives chaque minute. Les arrivées passées disparaissent des listes, mais restent archivées en base. Les files de MP persistent dans `data/state.json` ; conserver ce fichier. Comme pour les convois, le nonce réduit les doublons rapprochés sans garantir une livraison exactement une fois après une longue coupure.
+
+API : `POST /floods/preview`, `POST /floods`, `GET /floods`. Scopes : `floods:write` et `floods:read`. Tables : `bot_flood_batches` et `floods`, migration `app/bot-floods.sql` dans le dépôt du site, intégrée à `database/uptep/schema.sql`. Les droits phpPgAdmin `fzzz_admin` sont inclus. Aucun accès direct du bot à PostgreSQL. `/aide` présente les trois boutons.

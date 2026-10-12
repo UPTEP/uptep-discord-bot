@@ -1,6 +1,6 @@
 import {SlashCommandBuilder,EmbedBuilder,MessageFlags} from 'discord.js';
 export const helpCommand=new SlashCommandBuilder().setName('aide').setDescription('Toutes les commandes UPTEP, leur utilisation et les droits nécessaires').toJSON();
-export function helpPayload(channelId){
+export function helpPayload(channelId,floodChannelId){
  const embed=new EmbedBuilder().setColor(0xd4a347).setTitle('🚌 UPTEP · Aide du bot').setDescription('Les commandes fonctionnent dans les salons accessibles du serveur UPTEP. Cette aide est visible uniquement par toi.').addFields(
   {name:'/aide',value:'Affiche cette liste. Accessible à tous, même sans association à un joueur.'},
   {name:'/livraisons vitesse:7',value:'Liste en privé les demandes validées des autres joueurs, du plus proche au plus éloigné, avec ressources restantes et temps de trajet. Remplace **7** par ton niveau de **Vitesse d’attaque** (obligatoire). Ton joueur est retrouvé grâce à ton ID Discord.'},
@@ -13,5 +13,6 @@ export function helpPayload(channelId){
   {name:'📦 Boutons du tableau des convois',value:`Dans <#${channelId}> :\n**Demander des ressources** : créer une demande.\n**Déclarer un convoi** : enregistrer un envoi, manuellement ou en collant le rapport du jeu.\n**Consulter** : voir les demandes et leurs convois.\n**Valider une demande** : droit chaîne ou administrateur requis ; annonce @everyone après validation.\n**Modifier une demande** : ajuster les quantités restantes.\n**Annuler / Terminer une demande** : clôturer ta demande, ou celle d’un autre avec les droits nécessaires.\n**Annuler un convoi déclaré** : retirer une déclaration erronée ; cela n’annule pas l’envoi dans le jeu.`},
   {name:'🔔 Notifications et association',value:'Un convoi déclaré déclenche un MP au demandeur avec les quantités et l’arrivée prévue. Si ses MP sont bloqués, aucune notification de secours.\nSi ton ID Discord n’est pas associé à ton joueur, contacte **NoobEnCDI**.'}
  ).setFooter({text:'Le bot suit les déclarations : il n’envoie ni n’annule de convoi dans Fourmizzz.'});
+ if(floodChannelId)embed.addFields({name:'⚔️ Suivi des floods',value:`Dans <#${floodChannelId}> : **Déclarer des floods** ouvre un formulaire de collage, puis une confirmation privée avec les pseudos, troupes et arrivées comprises. **Tous les floods en cours** affiche les attaques non arrivées ; **Floods vers moi** limite la liste à ton joueur. Les destinataires associés reçoivent un MP, sauf s’ils les bloquent. Le collage doit provenir d’un relevé récent : les durées partent de l’envoi du formulaire.`});
  return {embeds:[embed],flags:MessageFlags.Ephemeral,allowedMentions:{parse:[]}};
 }

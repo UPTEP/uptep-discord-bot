@@ -1,3 +1,4 @@
+import {Floods} from './floods.js';
 import {helpCommand,helpPayload} from './help.js';
 import {Chain,chainCommand} from './chain.js';
 import {ValidationNotifications,ConvoyNotifications} from './notifications.js';
@@ -21,10 +22,13 @@ const ui=new UI({api,snapshot,state,refresh,notifications,convoyNotifications});
 const reports=new Reports({api,state});
 const deliveries=new Deliveries({api,guildId:cfg.guildId});
 const chain=new Chain({api,guildId:cfg.guildId});
+const floods=new Floods({api,state,client,guildId:cfg.guildId,channelId:cfg.floodChannelId});
+let floodTimer;
 const terrain=new Terrain({guildId:cfg.guildId,api});
 client.on(Events.InteractionCreate,async i=>{
  if(stopping)return;
- if(i.isChatInputCommand()&&i.commandName==='aide'){await i.reply(i.guildId===cfg.guildId?helpPayload(cfg.channelId):{content:'Commande disponible uniquement sur le serveur UPTEP.',flags:MessageFlags.Ephemeral}).catch(e=>console.error('Réponse aide impossible :',e.name));return;}
+ if(i.customId?.startsWith('uptep:flood:')){await floods.handle(i).catch(e=>console.error('Réponse floods impossible :',e.name));return;}
+ if(i.isChatInputCommand()&&i.commandName==='aide'){await i.reply(i.guildId===cfg.guildId?helpPayload(cfg.channelId,cfg.floodChannelId):{content:'Commande disponible uniquement sur le serveur UPTEP.',flags:MessageFlags.Ephemeral}).catch(e=>console.error('Réponse aide impossible :',e.name));return;}
  if(i.isChatInputCommand()&&i.commandName==='chaine'){await chain.handle(i).catch(e=>console.error('Publication chaîne impossible :',e.name));return;}
  if((i.isChatInputCommand()&&i.commandName==='livraisons')||i.customId?.startsWith('uptep:delivery:')){await deliveries.handle(i).catch(e=>console.error('Réponse livraisons impossible :',e.name));return;}
  if(i.isChatInputCommand()&&i.commandName==='solde-terrain'){await terrain.handle(i).catch(e=>console.error('Réponse terrain impossible :',e.name));return;}
@@ -68,10 +72,11 @@ client.once(Events.ClientReady,async()=>{
   for(const command of [...reportCommands,terrainCommand,deliveryCommand,chainCommand,helpCommand])await client.application.commands.create(command,cfg.guildId);
   console.log('Commandes slash de rapports et solde-terrain enregistrées.');
   await refresh();timer=setInterval(()=>refresh().catch(e=>console.error('Actualisation impossible :',e.name)),60000);
+  if(cfg.floodChannelId){await floods.mount().catch(e=>console.error('Tableau floods :',e.message));await floods.flush();floodTimer=setInterval(()=>{floods.mount().catch(e=>console.error('Tableau floods :',e.message));floods.flush().catch(()=>console.error('MP floods différés.'));},60000);}
   console.log('Bot connecté ; tableau prêt dans le salon configuré.');
  }catch(e){console.error('Démarrage impossible :',e.message);await client.destroy();process.exitCode=1;}
 });
 client.on(Events.Error,e=>console.error('Connexion Discord :',e.name));
-async function stop(){stopping=true;clearInterval(timer);await client.destroy();process.exit(0);}
+async function stop(){stopping=true;clearInterval(timer);clearInterval(floodTimer);await client.destroy();process.exit(0);}
 process.on('SIGINT',stop);process.on('SIGTERM',stop);
 client.login(cfg.token).catch(()=>{console.error('Connexion Discord refusée. Vérifier le token.');process.exitCode=1;});
