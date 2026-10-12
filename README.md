@@ -169,3 +169,9 @@ Disponible à tous les membres associés à un joueur UPTEP via `chaine_members.
 La réponse est privée et liste les demandes validées en cours des autres joueurs, avec leurs ressources restantes, la distance arrondie au supérieur et le temps aller estimé. Le tri utilise la distance exacte. Les coordonnées viennent des derniers relevés fzzz ; les coordonnées manquantes sont signalées et placées en dernier. Les pages de huit demandes se parcourent avec Précédent/Suivant, réservés à l’auteur de la commande. Une demande par ligne, même si un destinataire en a plusieurs. Aucun convoi n’est envoyé ou déclaré.
 
 Endpoint : `GET /livraisons?discord_id=…&vitesse=7&page=1`, scope existant `demandes:read`. Une association absente ou ambiguë invite à contacter NoobEnCDI. La formule de trajet est celle du userscript UPTEP : `round(86400 × (1 − exp(−distance / 350)) × 7.375 × 0.9^vitesse)`.
+
+## Annonce des validations
+
+Après validation réussie via le bot, une annonce `@everyone` est envoyée dans `CONVOY_CHANNEL_ID`, avec le demandeur, le numéro de demande et les ressources restantes. Le bot doit avoir la permission « Mentionner @everyone, @here et tous les rôles ». Seule cette annonce autorise la mention everyone ; les autres messages gardent leurs protections de mentions.
+
+Les annonces sont conservées dans le fichier privé `data/state.json`, avec le statut d’envoi par demande. Les échecs sont réessayés lors de l’actualisation du tableau ; un nonce stable protège les reprises rapprochées. Une coupure prolongée entre envoi Discord et sauvegarde locale peut toutefois produire un doublon. Aucune annonce rétroactive pour les demandes déjà validées avant ce déploiement. Les validations effectuées par un autre client API ne déclenchent pas cette annonce.
