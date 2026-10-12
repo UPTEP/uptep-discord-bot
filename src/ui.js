@@ -11,7 +11,7 @@ export function boardPayload(demands){
  return {embeds:[new EmbedBuilder().setColor(0x657645).setTitle('UPTEP · Gestion des convois').setDescription((lines.join('\n\n')||'Aucune demande en attente ou en cours.')+`\n\n🟠 À valider · 🟢 En cours\n${open.length} demande(s) ouverte(s) · ${done.length} terminée(s) sur 7 jours.`).setFooter({text:'UPTEP_CONVOYS_V1 · Actualisation automatique'}).setTimestamp()],components:actions(),allowedMentions:{parse:[]}};
 }
 export class UI {
- constructor({api,snapshot,state,refresh,notifications}){Object.assign(this,{api,snapshot,state,refresh,notifications});this.busy=new Set();}
+ constructor({api,snapshot,state,refresh,notifications,convoyNotifications}){Object.assign(this,{api,snapshot,state,refresh,notifications,convoyNotifications});this.busy=new Set();}
  async handle(i){
   const [,action,id,arg]=i.customId.split(':');
   try{
@@ -90,6 +90,8 @@ Saisis le nouveau total encore nécessaire, pas la quantité produite. Les convo
     try{
      const result=await this.api.request(s.data.path,{body:s.data.body});const content=`✅ Opération enregistrée sur UPTEP · demande #${result.demande.id}.`;
      if(/^\/demandes\/[0-9]+\/validation$/.test(s.data.path))this.notifications?.enqueue(result.demande);
+     if(/^\/demandes\/[0-9]+\/convois$/.test(s.data.path))this.convoyNotifications?.enqueue(result);
+     this.convoyNotifications?.flush().catch(()=>console.error('MP convoi différé.'));
      this.notifications?.flush().catch(()=>console.error('Annonce de validation différée.'));
      this.state.set(id,{...s.data,result:content});await i.editReply({content,components:[]});
      this.snapshot.invalidate();this.refresh().catch(()=>console.error('Actualisation du tableau différée.'));

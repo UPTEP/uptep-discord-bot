@@ -22,3 +22,25 @@ test('UI queues announcement only after successful validation, never a failed ac
  const other=state.create('123','job',{path:'/demandes/12/convois',body:{}});await ui.handle({...i,customId:'uptep:apply:'+other});assert.equal(queued,1);
  }finally{fs.rmSync(dir,{recursive:true});}
 });
+import {ConvoyNotifications} from '../src/notifications.js';
+const delivered={demande:{id:'12',discord_demandeur:'456'},convoi:{id:'99',pseudo_envoyeur:'Sender',nbpomme:'100',nbmateriaux:'20',date_arrivee:'2026-10-12T23:00:00+02:00'}};
+test('convoy DM goes to requester with resources and arrival; replay/restart do not resend',async()=>{
+ const state={data:{},save(){}};const sent=[];const client={users:{fetch:async id=>{assert.equal(id,'456');return {send:async p=>{sent.push(p);return {id:'789'};}};}}};
+ const n=new ConvoyNotifications({state,client});n.enqueue(delivered);await n.flush();n.enqueue(delivered);await new ConvoyNotifications({state,client}).flush();assert.equal(sent.length,1);
+ const f=sent[0].embeds[0].data.fields;assert.equal(f[0].value,'Sender');assert.match(f[1].value,/100 pommes/);assert.match(f[2].value,/<t:1791838800:F>/);assert.deepEqual(sent[0].allowedMentions,{parse:[]});
+});
+test('blocked DMs are abandoned silently; transient failure retries; missing arrival explicit',async()=>{
+ const state={data:{},save(){}};let calls=0,code=50007,last;
+ const client={users:{fetch:async()=>({send:async p=>{calls++;last=p;if(code)throw Object.assign(Error('send failed'),{code});return {id:'ok'};}})}};
+ const n=new ConvoyNotifications({state,client});n.enqueue(delivered);await n.flush();await n.flush();assert.equal(calls,1);assert.equal(state.data.convoyNotifications['99'].skipped,true);
+ n.enqueue({...delivered,convoi:{...delivered.convoi,id:'100',date_arrivee:null}});code=0;await n.flush();assert.equal(last.embeds[0].data.fields[2].value,'Non renseignée');
+ n.enqueue({...delivered,convoi:{...delivered.convoi,id:'101'}});code=503;await n.flush();assert.equal(state.data.convoyNotifications['101'].sent,null);code=0;await n.flush();assert.equal(state.data.convoyNotifications['101'].sent,'ok');
+});
+test('convoy confirmation queues DM once only after API success',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'uptep-dm-ui-'));
+ try{const state=new State(dir);let fail=true,queued=0;
+ const ui=new UI({state,convoyNotifications:{enqueue:r=>{assert.equal(r,delivered);queued++;},flush:async()=>{}},api:{request:async()=>{if(fail)throw Error('API failure');return delivered;}},snapshot:{invalidate(){}},refresh:async()=>{}});
+ const id=state.create('123','job',{path:'/demandes/12/convois',body:{}});const i={customId:'uptep:apply:'+id,user:{id:'123'},deferReply:async()=>{},editReply:async()=>{}};
+ await ui.handle(i);assert.equal(queued,0);fail=false;await ui.handle(i);await ui.handle(i);assert.equal(queued,1);
+ }finally{fs.rmSync(dir,{recursive:true});}
+});

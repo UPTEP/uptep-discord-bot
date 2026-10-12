@@ -1,4 +1,4 @@
-import {ValidationNotifications} from './notifications.js';
+import {ValidationNotifications,ConvoyNotifications} from './notifications.js';
 import {Deliveries,deliveryCommand} from './deliveries.js';
 import {Terrain,terrainCommand} from './terrain.js';
 import {Reports,reportCommands} from './reports.js';
@@ -9,12 +9,13 @@ const client=new Client({intents:[GatewayIntentBits.Guilds],allowedMentions:{par
 let channel,board,refreshing,timer,stopping=false;
 const key=cfg.guildId+':'+cfg.channelId;
 const notifications=new ValidationNotifications({state,getChannel:()=>channel});
+const convoyNotifications=new ConvoyNotifications({state,client});
 async function refresh(){
  if(refreshing)return refreshing;
  refreshing=(async()=>{const rows=await snapshot.get();const payload=boardPayload(rows);if(board)await board.edit(payload);else{board=await channel.send(payload);state.setBoard(key,board.id);}})();
- try{const result=await refreshing;await notifications.flush().catch(e=>console.error(e.message));return result;}finally{refreshing=null;}
+ try{const result=await refreshing;await notifications.flush().catch(e=>console.error(e.message));await convoyNotifications.flush().catch(()=>console.error('MP convoi différé.'));return result;}finally{refreshing=null;}
 }
-const ui=new UI({api,snapshot,state,refresh,notifications});
+const ui=new UI({api,snapshot,state,refresh,notifications,convoyNotifications});
 const reports=new Reports({api,state});
 const deliveries=new Deliveries({api,guildId:cfg.guildId});
 const terrain=new Terrain({guildId:cfg.guildId,api});

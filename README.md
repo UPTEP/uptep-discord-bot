@@ -175,3 +175,9 @@ Endpoint : `GET /livraisons?discord_id=…&vitesse=7&page=1`, scope existant `de
 Après validation réussie via le bot, une annonce `@everyone` est envoyée dans `CONVOY_CHANNEL_ID`, avec le demandeur, le numéro de demande et les ressources restantes. Le bot doit avoir la permission « Mentionner @everyone, @here et tous les rôles ». Seule cette annonce autorise la mention everyone ; les autres messages gardent leurs protections de mentions.
 
 Les annonces sont conservées dans le fichier privé `data/state.json`, avec le statut d’envoi par demande. Les échecs sont réessayés lors de l’actualisation du tableau ; un nonce stable protège les reprises rapprochées. Une coupure prolongée entre envoi Discord et sauvegarde locale peut toutefois produire un doublon. Aucune annonce rétroactive pour les demandes déjà validées avant ce déploiement. Les validations effectuées par un autre client API ne déclenchent pas cette annonce.
+
+## MP après déclaration de convoi
+
+Chaque convoi déclaré avec succès via le bot déclenche un MP au `discord_demandeur` de la demande. Il contient le numéro de demande/convoi, l’expéditeur, les quantités et l’arrivée prévue (date Discord dans le fuseau du destinataire, ou « Non renseignée »). Il s’agit d’une déclaration, pas d’une confirmation de réception dans le jeu.
+
+Les MP bloqués ou destinataires inaccessibles sont abandonnés sans message public de secours. Les erreurs temporaires sont réessayées à l’actualisation du tableau. La file privée dans `data/state.json` conserve le statut par convoi pour éviter les répétitions ; aucune notification rétroactive. Comme pour les annonces, une coupure prolongée entre envoi et sauvegarde peut entraîner un doublon malgré le nonce Discord. Aucun changement de schéma SQL nécessaire.
