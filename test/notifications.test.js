@@ -44,3 +44,9 @@ test('convoy confirmation queues DM once only after API success',async()=>{
  await ui.handle(i);assert.equal(queued,0);fail=false;await ui.handle(i);await ui.handle(i);assert.equal(queued,1);
  }finally{fs.rmSync(dir,{recursive:true});}
 });
+test('closed requests delete only bot validation announcements, active and unknown preserved',async()=>{
+ const state={data:{validationNotifications:{'1':{sent:'11'},'2':{sent:'22'},'3':{sent:'33'},'4':{sent:'44'}}},save(){}};const deleted=[];
+ const channel={client:{user:{id:'bot'}},messages:{fetch:async id=>({author:{id:'bot'},content:'@everyone Une demande de ressources vient d’être validée !',embeds:[{title:'Demande #'+id[0]+' validée · Test'}],delete:async()=>deleted.push(id)})}};
+ const n=new ValidationNotifications({state,getChannel:()=>channel,api:{request:async()=>({demandes:[{id:'1',fini:true,annulee:false},{id:'2',fini:false,annulee:true},{id:'3',fini:false,annulee:false}]})}});
+ assert.equal(await n.cleanClosed(),2);assert.deepEqual(deleted,['11','22']);assert.equal(await n.cleanClosed(),0);assert.equal(state.data.validationNotifications['3'].removed,undefined);assert.equal(state.data.validationNotifications['4'].removed,undefined);
+});

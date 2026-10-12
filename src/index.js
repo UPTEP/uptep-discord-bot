@@ -11,12 +11,12 @@ const cfg=config();const api=new Api(cfg);const snapshot=new Snapshot(api);const
 const client=new Client({intents:[GatewayIntentBits.Guilds],allowedMentions:{parse:[]}});
 let channel,board,refreshing,timer,stopping=false;
 const key=cfg.guildId+':'+cfg.channelId;
-const notifications=new ValidationNotifications({state,getChannel:()=>channel});
+const notifications=new ValidationNotifications({state,getChannel:()=>channel,api});
 const convoyNotifications=new ConvoyNotifications({state,client});
 async function refresh(){
  if(refreshing)return refreshing;
  refreshing=(async()=>{const rows=await snapshot.get();const payload=boardPayload(rows);if(board)await board.edit(payload);else{board=await channel.send(payload);state.setBoard(key,board.id);}})();
- try{const result=await refreshing;await notifications.flush().catch(e=>console.error(e.message));await convoyNotifications.flush().catch(()=>console.error('MP convoi différé.'));return result;}finally{refreshing=null;}
+ try{const result=await refreshing;await notifications.cleanClosed().catch(e=>console.error('Nettoyage annonces :',e.name));await notifications.flush().catch(e=>console.error(e.message));await convoyNotifications.flush().catch(()=>console.error('MP convoi différé.'));return result;}finally{refreshing=null;}
 }
 const ui=new UI({api,snapshot,state,refresh,notifications,convoyNotifications});
 const reports=new Reports({api,state});
