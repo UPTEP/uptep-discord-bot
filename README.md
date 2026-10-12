@@ -196,7 +196,7 @@ Les MP bloqués ou destinataires inaccessibles sont abandonnés sans message pub
 
 ## `/chaine`
 
-Publie dans le salon ou fil courant un embed avec tous les membres présents de l’alliance UPTEP, leur grade et un lien **Flooder** : `https://s5.fourmizzz.fr/ennemie.php?Attaquer=ID_JOUEUR&lieu=1`. La commande est disponible aux joueurs associés à Discord, dans tous les salons accessibles du serveur configuré. Le bot doit pouvoir écrire et intégrer des liens. Aucune mention n’est déclenchée ; les erreurs restent privées.
+Publie dans le salon ou fil courant un embed avec tous les membres présents de l’alliance UPTEP, regroupés par grade et numéro avec des titres et un lien **⚔️ Flooder** : `https://s5.fourmizzz.fr/ennemie.php?Attaquer=ID_JOUEUR&lieu=1`. La commande est disponible aux joueurs associés à Discord, dans tous les salons accessibles du serveur configuré. Le bot doit pouvoir écrire et intégrer des liens. Aucune mention n’est déclenchée ; les erreurs restent privées.
 
 Le classement suit celui du site : grades prioritaires, Passeurs du plus grand numéro au plus petit, autres grades croissants, puis membres sans grade. Les membres sortis de l’alliance ne sont pas inclus. Si nécessaire, la liste est répartie en plusieurs embeds publics. Chaque exécution publie une nouvelle liste ; les anciens messages ne sont pas actualisés automatiquement. Les liens ouvrent la page d’attaque sans lancer eux-mêmes une attaque ni vérifier la portée.
 
