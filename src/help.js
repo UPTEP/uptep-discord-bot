@@ -1,0 +1,17 @@
+import {SlashCommandBuilder,EmbedBuilder,MessageFlags} from 'discord.js';
+export const helpCommand=new SlashCommandBuilder().setName('aide').setDescription('Toutes les commandes UPTEP, leur utilisation et les droits nécessaires').toJSON();
+export function helpPayload(channelId){
+ const embed=new EmbedBuilder().setColor(0xd4a347).setTitle('🚌 UPTEP · Aide du bot').setDescription('Les commandes fonctionnent dans les salons accessibles du serveur UPTEP. Cette aide est visible uniquement par toi.').addFields(
+  {name:'/aide',value:'Affiche cette liste. Accessible à tous, même sans association à un joueur.'},
+  {name:'/livraisons vitesse:7',value:'Liste en privé les demandes validées des autres joueurs, du plus proche au plus éloigné, avec ressources restantes et temps de trajet. Remplace **7** par ton niveau de **Vitesse d’attaque** (obligatoire). Ton joueur est retrouvé grâce à ton ID Discord.'},
+  {name:'/chaine',value:'Publie dans le salon la liste des membres dans l’ordre de chaîne, avec **Flooder · Grade · Pseudo**. Le lien ouvre la page d’attaque du joueur. Accessible aux joueurs associés.'},
+  {name:'/historique-demandes — chefs',value:'Historique privé des demandes : quantités, état et dates de création, validation et fin. Filtres facultatifs : joueur, état et période. Sélectionne une demande pour voir ses convois.'},
+  {name:'/historique-convois — chefs',value:'Historique privé des convois déclarés, avec quantités, expéditeur, destinataire et dates. Filtres facultatifs : expéditeur, destinataire, numéro de demande et période.'},
+  {name:'/stats-convois — chefs',value:'Statistiques privées des ressources envoyées et reçues par joueur, avec moyennes quotidiennes. Filtre joueur facultatif. Les convois annulés sont exclus.'},
+  {name:'Périodes et droits des historiques',value:'**7 jours** par défaut ; choix de 30 jours ou de dates personnalisées avec `debut` et `fin` au format **JJ-MM-AAAA**. Réservé aux chefs autorisés dans la liste du bot et associés à un joueur.'},
+  {name:'/solde-terrain — réservé à NoobEnCDI',value:'Analyse les rapports de terrain du salon, enregistre les mouvements et publie uniquement le solde cumulé. Le premier lancement lit l’historique ; les suivants lisent les nouveaux messages.'},
+  {name:'📦 Boutons du tableau des convois',value:`Dans <#${channelId}> :\n**Demander des ressources** : créer une demande.\n**Déclarer un convoi** : enregistrer un envoi, manuellement ou en collant le rapport du jeu.\n**Consulter** : voir les demandes et leurs convois.\n**Valider une demande** : droit chaîne ou administrateur requis ; annonce @everyone après validation.\n**Modifier une demande** : ajuster les quantités restantes.\n**Annuler / Terminer une demande** : clôturer ta demande, ou celle d’un autre avec les droits nécessaires.\n**Annuler un convoi déclaré** : retirer une déclaration erronée ; cela n’annule pas l’envoi dans le jeu.`},
+  {name:'🔔 Notifications et association',value:'Un convoi déclaré déclenche un MP au demandeur avec les quantités et l’arrivée prévue. Si ses MP sont bloqués, aucune notification de secours.\nSi ton ID Discord n’est pas associé à ton joueur, contacte **NoobEnCDI**.'}
+ ).setFooter({text:'Le bot suit les déclarations : il n’envoie ni n’annule de convoi dans Fourmizzz.'});
+ return {embeds:[embed],flags:MessageFlags.Ephemeral,allowedMentions:{parse:[]}};
+}

@@ -6,6 +6,7 @@ Bot Node.js pour demander des ressources, déclarer des convois, valider, termin
 
 | Fonction | Accès | Résultat |
 | --- | --- | --- |
+| `/aide` | Tous les membres du serveur | Guide privé des commandes, boutons et droits. |
 | `/livraisons vitesse:7` | Joueur associé à Discord | Liste privée des demandes validées, distances et trajets estimés. |
 | `/historique-demandes`, `/historique-convois`, `/stats-convois` | Chefs de `ADMIN_DISCORD_IDS` associés | Historiques et statistiques privés. |
 | `/solde-terrain` | ID de test autorisé, voir section dédiée | Lecture incrémentale des rapports, sauvegarde via l’API et solde public. |
@@ -201,3 +202,7 @@ Publie dans le salon ou fil courant un embed avec tous les membres présents de 
 Le classement suit celui du site : grades prioritaires, Passeurs du plus grand numéro au plus petit, autres grades croissants, puis membres sans grade. Les membres sortis de l’alliance ne sont pas inclus. La liste tient dans un seul embed tant que sa description ne dépasse pas 4 000 caractères. Elle est découpée uniquement au-delà de ce seuil, sans limite fixe de joueurs par bloc. Chaque exécution publie une nouvelle liste ; les anciens messages ne sont pas actualisés automatiquement. Les liens ouvrent la page d’attaque sans lancer eux-mêmes une attaque ni vérifier la portée.
 
 API : `GET /chaine?discord_id=…`, scope existant `membres:read`. Aucun changement de schéma de base.
+
+## `/aide`
+
+Affiche un guide privé des sept commandes slash, des options usuelles et des droits requis. Présente également les boutons du tableau, les notifications et la procédure d’association auprès de NoobEnCDI. Disponible dans tous les salons et fils accessibles du serveur configuré, sans compte joueur associé ni appel API. Aucun message public n’est envoyé.
