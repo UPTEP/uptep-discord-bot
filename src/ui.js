@@ -28,6 +28,11 @@ export class UI {
    if(action==='pick'){
     const s=this.state.get(id,i.user.id);const demand=s.data.rows.find(d=>d.id===i.values[0]);if(!demand)throw new UserError('Demande inconnue.');
     if(s.type==='adjust'){
+     if(!demand.valide){
+      const sid=this.state.create(i.user.id,'modify',{demand});
+      const filled=(key,label,value,required=true)=>{const f=field(key,label,required);if(value!==null&&value!==undefined&&value!=='')f.components[0].setValue(String(value));return f;};
+      return await i.showModal(new ModalBuilder().setCustomId('uptep:modifyForm:'+sid).setTitle(short('Modifier la demande · #'+demand.id,45)).addComponents(filled('objet','Bâtiment ou recherche',demand.objet),filled('niveau','Niveau visé',demand.niveau),filled('food','Pommes demandées',demand.nbpomme_original),filled('wood','Matériaux demandés',demand.nbmateriaux_original),filled('date','Date souhaitée (JJ-MM-AAAA)',demand.date_souhaitee?frenchDate(demand.date_souhaitee):'',false)));
+     }
      const sid=this.state.create(i.user.id,'adjust',{demand});
      const food=field('food','Pommes encore nécessaires',true),wood=field('wood','Matériaux encore nécessaires',true);
      food.components[0].setValue(String(demand.nbpomme_restant));wood.components[0].setValue(String(demand.nbmateriaux_restant));
@@ -48,7 +53,7 @@ export class UI {
     }
     if(s.type==='browse')return await i.editReply(this.detail(demand));
     const member=await this.api.member(i.user.id);this.check(s.type,demand,member);
-    return await this.stage(i,s.type,{path:'/demandes/'+demand.id+'/'+(s.type==='validate'?'validation':'annulation'),body:{discord_id:i.user.id},summary:`${s.type==='validate'?'Valider':'Annuler'} la demande #${demand.id} de ${escape(demand.pseudo_demandeur)} ?`});
+    return await this.stage(i,s.type,{path:'/demandes/'+demand.id+'/'+(s.type==='validate'?'validation':'annulation'),body:{discord_id:i.user.id,...(s.type==='validate'&&demand.version_modification?{version_attendue:demand.version_modification}:{})},summary:`${s.type==='validate'?'Valider':'Annuler'} la demande #${demand.id} de ${escape(demand.pseudo_demandeur)} ?`+(s.type==='validate'?`\n${escape(demand.objet||'Ressources')}${demand.niveau?' · niveau '+demand.niveau:''}\n🍎 ${fmt(demand.nbpomme_original)} · 🪵 ${fmt(demand.nbmateriaux_original)}\nDate souhaitée : ${demand.date_souhaitee?frenchDate(demand.date_souhaitee):'Non renseignée'}`:'')});
    }
    await i.deferReply({flags:MessageFlags.Ephemeral});
    if(action==='cancelConvoy'){
@@ -59,6 +64,14 @@ export class UI {
     const s=this.state.get(id,i.user.id);if(s.type!=='closeDemand'||!['cancel','finish'].includes(arg))throw new UserError('Action invalide.');
     const d=s.data.demand;this.check('cancel',d,await this.api.member(i.user.id));
     return await this.stage(i,'cancel',{path:'/demandes/'+d.id+'/'+(arg==='finish'?'terminaison':'annulation'),body:{discord_id:i.user.id},summary:`${arg==='finish'?'Terminer':'Annuler'} la demande #${d.id} de **${escape(d.pseudo_demandeur)}** ?\nLes convois restent dans l’historique.${arg==='finish'?' Les quantités encore attendues sont conservées, mais la demande sera fermée.':''}`});
+   }
+   if(action==='modifyForm'){
+    const s=this.state.get(id,i.user.id);if(s.type!=='modify')throw new UserError('Formulaire invalide.');
+    const d=s.data.demand;this.check('adjust',d,await this.api.member(i.user.id));
+    if(!d.version_modification)throw new UserError('Rouvre Modifier une demande depuis le tableau actualisé.');
+    const get=k=>i.fields.getTextInputValue(k);
+    const body={discord_id:i.user.id,...amounts(get('food'),get('wood')),objet:cleanText(get('objet')),niveau:level(get('niveau').trim()),date_souhaitee:dueDate(get('date'))??null,version_attendue:d.version_modification};
+    return await this.stage(i,'modify',{path:'/demandes/'+d.id+'/modification',body,summary:`Modifier la demande #${d.id} de **${escape(d.pseudo_demandeur)}**\n**${escape(body.objet)} · niveau ${body.niveau}**\n🍎 ${fmt(body.nbpomme)} · 🪵 ${fmt(body.nbmateriaux)}\nDate souhaitée : ${body.date_souhaitee?frenchDate(body.date_souhaitee):'Non renseignée'}\n\nLa demande restera en attente de validation.`});
    }
    if(action==='adjustForm'){
     const s=this.state.get(id,i.user.id);if(s.type!=='adjust')throw new UserError('Formulaire invalide.');
@@ -101,7 +114,7 @@ Saisis le nouveau total encore nécessaire, pas la quantité produite. Les convo
    if(action==='page'){const s=this.state.get(id,i.user.id);return await i.editReply(this.selection(id,s,Number(arg)));}
    if(['deliver','validate','cancel','browse','adjust'].includes(action)){
     const member=await this.api.member(i.user.id);const all=await this.snapshot.get();
-    const rows=all.filter(d=>action==='browse'||(!d.fini&&!d.annulee&&(action==='deliver'?d.valide&&d.iddemandeur!==member.player_id:action==='validate'?!d.valide&&member.is_chaine:action==='adjust'?d.valide&&(member.is_chaine||d.iddemandeur===member.player_id):member.is_chaine||d.iddemandeur===member.player_id)));
+    const rows=all.filter(d=>action==='browse'||(!d.fini&&!d.annulee&&(action==='deliver'?d.valide&&d.iddemandeur!==member.player_id:action==='validate'?!d.valide&&member.is_chaine:member.is_chaine||d.iddemandeur===member.player_id)));
     if(action==='validate'&&!member.is_chaine)throw new UserError('Il faut être administrateur du bot ou avoir le droit chaîne sur UPTEP pour valider les demandes.');
     if(!rows.length)return await i.editReply('Aucune demande disponible pour cette action.');
     const sid=this.state.create(i.user.id,action,{rows});return await i.editReply(this.selection(sid,this.state.get(sid,i.user.id),0));

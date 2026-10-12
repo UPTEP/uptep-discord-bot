@@ -64,7 +64,7 @@ test('Ajustement du restant : sélection autorisée, modal préremplie et confir
  const ui=new UI({state,api:{member:async()=>({player_id:'1',is_chaine:false})},snapshot:{get:async()=>[demand,{...demand,id:'9',iddemandeur:'2'},{...demand,id:'10',valide:false}]}});
  const base={user:{id:'123'},deferReply:async()=>{},editReply:async p=>payload=p};
  await ui.handle({...base,customId:'uptep:adjust'});
- const select=payload.components[0].toJSON().components[0];assert.deepEqual(select.options.map(o=>o.value),['8']);
+ const select=payload.components[0].toJSON().components[0];assert.deepEqual(select.options.map(o=>o.value),['8','10']);
  await ui.handle({...base,customId:select.custom_id,values:['8'],showModal:async m=>modal=m.toJSON()});
  assert.equal(modal.components[0].components[0].value,'80000');assert.equal(modal.components[1].components[0].value,'40000');
  await ui.handle({...base,customId:modal.custom_id,fields:{getTextInputValue:k=>k==='food'?'50k':'0'}});

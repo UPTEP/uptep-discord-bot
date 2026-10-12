@@ -128,6 +128,12 @@ Les commandes sont enregistrées automatiquement au démarrage dans le serveur d
 
 Les chiffres représentent les **envois déclarés au bot**, sans confirmation de livraison dans Fourmizzz. Les heures d’arrivée sont prévisionnelles. La date de fin d’une demande correspond à la clôture des déclarations, automatique ou manuelle ; elle ne prouve pas l’arrivée des ressources dans le jeu.
 
+## Modifier une demande avant validation
+
+Le bouton **Modifier une demande** permet au demandeur ou à un responsable (droit chaîne ou liste `ADMIN_DISCORD_IDS`) de corriger une demande en attente : bâtiment/recherche, niveau, pommes, matériaux et date souhaitée. Les champs sont préremplis ; vider la date permet de la supprimer. Au moins une quantité doit rester positive.
+
+Après confirmation, la demande conserve son numéro, son auteur et sa date de création et reste **en attente de validation**. Les quantités demandées et restantes sont mises à jour ensemble. Si la demande a changé ou a été validée entre-temps, la confirmation est refusée : rouvrir le formulaire. La confirmation de validation vérifie aussi que le contenu présenté au responsable n’a pas changé.
+
 ## Ajuster le restant d’une demande
 
 Le bouton bleu **Modifier une demande**, dans le tableau des convois, permet au demandeur ou à un responsable (droit chaîne ou liste `ADMIN_DISCORD_IDS`) de modifier une demande **validée et en cours**.
