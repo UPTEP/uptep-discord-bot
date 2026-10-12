@@ -34,3 +34,10 @@ test('modal preview never creates a flood; confirm sends same frozen batch and r
  await floods.handle({...i,customId:'uptep:flood:confirm:'+sid});assert.equal(calls[1][1].body.floods[0].arrival_at,arrival);await floods.handle({...i,customId:'uptep:flood:confirm:'+sid});assert.equal(calls.length,2);
  }finally{fs.rmSync(dir,{recursive:true});}
 });
+import {floodReplyCleanup} from '../src/floods.js';
+test('completed flood removes private source then success after 3 seconds, never public board',async()=>{
+ const deleted=[],timers=[];const i={client:{user:{id:'bot'}},message:{id:'old',author:{id:'bot'},flags:{has:()=>true}},webhook:{deleteMessage:async id=>deleted.push(id)},editReply:async()=>{},deleteReply:async()=>deleted.push('current')};
+ const restore=floodReplyCleanup(i,(fn,ms)=>{timers.push({fn,ms});return {unref(){}};});
+ await i.editReply('✅ 2 floods enregistrés.');assert.deepEqual(deleted,['old']);assert.equal(timers[0].ms,3000);await timers[0].fn();assert.deepEqual(deleted,['old','current']);restore();
+ deleted.length=0;i.message.flags.has=()=>false;const undo=floodReplyCleanup(i,(fn,ms)=>({unref(){}}));await i.editReply({embeds:[{}]});assert.deepEqual(deleted,[]);undo();
+});

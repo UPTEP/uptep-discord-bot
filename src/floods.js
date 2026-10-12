@@ -5,6 +5,26 @@ const row=(...buttons)=>new ActionRowBuilder().addComponents(buttons);
 const button=(id,label,style=ButtonStyle.Secondary)=>new ButtonBuilder().setCustomId('uptep:flood:'+id).setLabel(label).setStyle(style);
 export function floodBoard(){return {embeds:[new EmbedBuilder().setColor(0xb96835).setTitle('⚔️ UPTEP · Suivi des floods').setDescription('Colle tes attaques en cours, vérifie le résultat puis confirme pour les enregistrer.\nLes destinataires associés sont avertis par MP. Les floods arrivés restent archivés et disparaissent des listes en cours.').setFooter({text:'UPTEP_FLOODS_V1'})],components:[row(button('declare','Déclarer des floods',ButtonStyle.Success),button('all','Tous les floods en cours',ButtonStyle.Primary),button('self','Floods vers moi',ButtonStyle.Primary))],allowedMentions:{parse:[]}};}
 function floodLine(f){const ts=Math.floor(Date.parse(f.arrival_at)/1000);return `${f.sender_pseudo?'**'+esc(f.sender_pseudo)+'** → ':''}**${esc(f.pseudo)}** · ${esc(f.location)}\nArrivée : <t:${ts}:F> (<t:${ts}:R>)${f.troops?'\nTroupes : '+esc(short(f.troops,250)):'\nTroupes : non renseignées'}${f.warning?'\n⚠️ '+esc(f.warning):''}`;}
+export function floodReplyCleanup(i,schedule=setTimeout){
+ const originals={};let timer;
+ for(const method of ['reply','editReply']){
+  if(typeof i[method]!=='function')continue;
+  originals[method]=i[method];
+  i[method]=async payload=>{
+   const result=await originals[method].call(i,payload);
+   const content=typeof payload==='string'?payload:payload?.content??'';
+   const finished=content.startsWith('✅')||content==='Déclaration abandonnée.'||content==='Ces floods ont déjà été enregistrés.';
+   const advanced=finished||!!payload?.embeds?.length;
+   if(advanced&&i.message?.flags?.has(MessageFlags.Ephemeral)&&i.message.author?.id===i.client?.user?.id&&i.client?.user?.id){
+    await i.webhook.deleteMessage(i.message.id).catch(()=>{});
+   }
+   clearTimeout(timer);
+   timer=schedule(()=>{if(i.deleteReply)i.deleteReply().catch(()=>{});},finished?3000:300000);timer?.unref?.();
+   return result;
+  };
+ }
+ return ()=>{for(const [method,original] of Object.entries(originals))i[method]=original;};
+}
 export class Floods{
  constructor({api,state,client,guildId,channelId}){Object.assign(this,{api,state,client,guildId,channelId});this.busy=new Set();this.flushing=null;this.mounting=false;}
  async mount(){
@@ -20,7 +40,8 @@ export class Floods{
  preview(sid,s,page=0){const items=s.data.floods,pages=Math.ceil(items.length/5);page=Math.max(0,Math.min(pages-1,page));const e=new EmbedBuilder().setTitle('Confirmer les floods').setColor(0xb96835).setDescription('Rien n’est enregistré avant confirmation. Les arrivées sont figées au moment du collage.').setFooter({text:`${items.length} floods · Page ${page+1}/${pages}`});items.slice(page*5,page*5+5).forEach((f,i)=>e.addFields({name:'Flood '+(page*5+i+1),value:floodLine(f)}));if(s.data.warnings.length)e.addFields({name:'⚠️ Vérifications',value:short(s.data.warnings.join('\n'),950)});
  const buttons=[];if(page>0)buttons.push(button(`preview:${sid}:${page-1}`,'Précédent'));if(page+1<pages)buttons.push(button(`preview:${sid}:${page+1}`,'Suivant'));buttons.push(button('confirm:'+sid,`Confirmer les ${items.length} floods`,ButtonStyle.Success),button('cancel:'+sid,'Abandonner',ButtonStyle.Danger));return {embeds:[e],components:[row(...buttons)],allowedMentions:{parse:[]}};}
  async list(i,scope,page){const data=await this.api.request('/floods?'+new URLSearchParams({discord_id:i.user.id,scope,page:String(page)}));const e=new EmbedBuilder().setTitle(scope==='self'?'Floods vers moi':'Tous les floods en cours').setColor(0xb96835).setFooter({text:`${data.total} floods · Page ${data.page}/${data.pages}`});if(!data.floods.length)e.setDescription('Aucun flood en cours.');data.floods.forEach(f=>e.addFields({name:'#'+f.id,value:floodLine(f)}));const buttons=[];if(data.page>1)buttons.push(button(`list:${i.user.id}:${scope}:${data.page-1}`,'Précédent'));if(data.page<data.pages)buttons.push(button(`list:${i.user.id}:${scope}:${data.page+1}`,'Suivant'));await i.editReply({embeds:[e],components:buttons.length?[row(...buttons)]:[],allowedMentions:{parse:[]}});}
- async handle(i){
+ async handle(i){const restore=floodReplyCleanup(i);try{return await this.process(i);}finally{restore();}}
+ async process(i){
   if(i.guildId!==this.guildId||i.channelId!==this.channelId)return i.reply({content:'Ces boutons sont réservés au salon des floods.',flags:MessageFlags.Ephemeral});
   const [,,action,id,arg,last]=i.customId.split(':');
   try{
