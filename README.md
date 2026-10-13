@@ -35,7 +35,7 @@ Le bot nécessite Voir le salon, Envoyer des messages, Intégrer des liens et Vo
 
 Les joueurs doivent être associés par leur ID Discord dans `chaine_members` et présents dans UPTEP. Le droit chaîne d’un compte actif ou la liste `ADMIN_DISCORD_IDS` accorde les actions administratives. Cette liste est relue par l’API sur le même serveur dans `/home/uptep/discord-bot/.env` ; déplacer le bot sur une autre machine nécessite d’adapter cette configuration côté API. Elle ne contourne pas l’association obligatoire.
 
-Les demandes utilisent JJ-MM-AAAA dans les formulaires. La déclaration de convoi accepte une ligne du jeu ou une saisie manuelle. Le bot ne lance ni n’annule aucun envoi dans Fourmizzz : il gère le suivi.
+Les demandes utilisent JJ-MM-AAAA dans les formulaires. La déclaration de convoi accepte une ligne du jeu ou une saisie manuelle. Dans une ligne copiée, les noms des ressources sont facultatifs : la première quantité est toujours la nourriture, la seconde les matériaux. Exemple accepté : `Vous allez livrer 0 et 100 000 à Nythrakar dans 2H 57m 57s`. Le retour, la mention Annuler et un tiret final sont facultatifs ; les puces et le gras sont acceptés. Le bot ne lance ni n’annule aucun envoi dans Fourmizzz : il gère le suivi.
 
 Changer les IDs de serveur/salon dans `.env`, puis redémarrer pour basculer. Un salon Discord de test utilise la vraie base si l’API configurée reste celle de production. Prévoir une API distincte pour isoler entièrement les tests.
 

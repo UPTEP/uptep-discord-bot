@@ -22,11 +22,25 @@ test('Rapports Fourmizzz : quantités, destinataire et arrivée, jamais le retou
  assert.throws(()=>convoyReport('Vous allez livrer 1 nourritures et 0 materiaux à Justixon dans 1H','Achak',now),/Justixon/);
  assert.throws(()=>convoyReport('rapport invalide','Achak',now));
 });
+test('Rapports sans noms de ressources : nourriture puis matériaux, avec retour ou tiret final',()=>{
+ const now=new Date('2026-10-13T11:29:00Z');
+ const base='Vous allez livrer 0  et 100 000  à Nythrakar dans 2H 57m 57s';
+ for(const suffix of [' - Retour le 13 oct. à 16h24 - Annuler',' -','']){
+  for(const report of [base+suffix,'- **'+base+suffix+'**']){
+   assert.deepEqual(convoyReport(report,'Nythrakar',now),{nbpomme:'0',nbmateriaux:'100000',date_arrivee:'2026-10-13T14:26:57Z'});
+  }
+ }
+ for(const [food,wood] of [['9\u202f007\u202f199\u202f254\u202f740\u202f993','12 345'],['9 007 199 254 740 993 nourritures','12 345'],['9 007 199 254 740 993','12 345 matériaux']]){
+  assert.deepEqual(convoyReport(`Vous allez livrer ${food} et ${wood} à Nythrakar dans 1H`,'Nythrakar',now),{nbpomme:'9007199254740993',nbmateriaux:'12345',date_arrivee:'2026-10-13T12:29:00Z'});
+ }
+ assert.throws(()=>convoyReport(base,'Achak',now),/Nythrakar/);
+ for(const report of ['Vous allez livrer 0 et 0 à Nythrakar dans 1H','Vous allez livrer et 100 à Nythrakar dans 1H','Vous allez livrer 100 matériaux et 200 nourritures à Nythrakar dans 1H','Vous allez livrer 100 et 200 à Nythrakar dans bientôt'])assert.throws(()=>convoyReport(report,'Nythrakar',now));
+});
 test('Rapport importé puis champs préremplis ; ancienne confirmation invalidée',async()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'uptep-report-'));try{
  const state=new State(dir),sid=state.create('123','deliver',{demand:{id:'8',pseudo_demandeur:'Achak'}});let payload,modal;
  const ui=new UI({state,api:{member:async()=>({player_id:'1'})}});
- await ui.handle({customId:'uptep:deliverForm:'+sid,user:{id:'123'},deferReply:async()=>{},fields:{fields:new Map([['report',{}]]),getTextInputValue:k=>({report:'Vous allez livrer 2 nourritures et 1 materiaux à Achak dans 3H',food:'',wood:'',arrival:''})[k]},editReply:async p=>payload=p});
+ await ui.handle({customId:'uptep:deliverForm:'+sid,user:{id:'123'},deferReply:async()=>{},fields:{fields:new Map([['report',{}]]),getTextInputValue:k=>({report:'Vous allez livrer 2 et 1 à Achak dans 3H -',food:'',wood:'',arrival:''})[k]},editReply:async p=>payload=p});
  const buttons=payload.components[0].toJSON().components;assert.equal(buttons.length,2);
  await ui.handle({customId:buttons[1].custom_id,user:{id:'123'},showModal:async m=>modal=m.toJSON()});
  assert.equal(modal.components[0].components[0].value,'2');assert.equal(modal.components[1].components[0].value,'1');
