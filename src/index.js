@@ -1,3 +1,4 @@
+import {SiteLogin,loginCommand} from './login.js';
 import {Floods} from './floods.js';
 import {helpCommand,helpPayload} from './help.js';
 import {Chain,chainCommand} from './chain.js';
@@ -26,9 +27,11 @@ const deliveries=new Deliveries({api,guildId:cfg.guildId});
 const chain=new Chain({api,guildId:cfg.guildId});
 const floods=new Floods({api,state,client,guildId:cfg.guildId,channelId:cfg.floodChannelId});
 let floodTimer;
+const siteLogin=new SiteLogin({guildId:cfg.guildId,api});
 const terrain=new Terrain({guildId:cfg.guildId,api});
 client.on(Events.InteractionCreate,async i=>{
  if(stopping)return;
+ if(i.isChatInputCommand()&&i.commandName===loginCommand.name){await siteLogin.handle(i).catch(e=>console.error('Réponse connexion impossible :',e.name));return;}
  if(i.customId?.startsWith('uptep:flood:')){await floods.handle(i).catch(e=>console.error('Réponse floods impossible :',e.name));return;}
  if(i.isChatInputCommand()&&i.commandName==='aide'){await i.reply(i.guildId===cfg.guildId?helpPayload(cfg.channelId,cfg.floodChannelId):{content:'Commande disponible uniquement sur le serveur UPTEP.',flags:MessageFlags.Ephemeral}).catch(e=>console.error('Réponse aide impossible :',e.name));return;}
  if(i.isChatInputCommand()&&i.commandName==='chaine'){await chain.handle(i).catch(e=>console.error('Publication chaîne impossible :',e.name));return;}
@@ -72,7 +75,7 @@ client.once(Events.ClientReady,async()=>{
   const saved=state.board(key);if(saved)board=await channel.messages.fetch(saved).catch(e=>{if(e.code===10008)return null;throw e;});
   if(board&&board.author.id!==client.user.id)throw new Error('Le message enregistré appartient à un autre compte.');
   if(!board){const messages=await channel.messages.fetch({limit:100});board=messages.find(m=>m.author.id===client.user.id&&m.embeds.some(e=>e.footer?.text?.startsWith('UPTEP_CONVOYS_V1')))??null;if(board)state.setBoard(key,board.id);}
-  for(const command of [...reportCommands,suspendCommand,terrainCommand,deliveryCommand,chainCommand,helpCommand])await client.application.commands.create(command,cfg.guildId);
+  for(const command of [...reportCommands,suspendCommand,terrainCommand,loginCommand,deliveryCommand,chainCommand,helpCommand])await client.application.commands.create(command,cfg.guildId);
   console.log('Commandes slash de rapports et solde-terrain enregistrées.');
   await refresh();timer=setInterval(()=>refresh().catch(e=>console.error('Actualisation impossible :',e.name)),60000);
   if(cfg.floodChannelId){await floods.mount().catch(e=>console.error('Tableau floods :',e.message));await floods.flush();floodTimer=setInterval(()=>{floods.mount().catch(e=>console.error('Tableau floods :',e.message));floods.flush().catch(()=>console.error('MP floods différés.'));},60000);}

@@ -246,3 +246,13 @@ API : `POST /floods/preview`, `POST /floods`, `GET /floods`. Scopes : `floods:wr
 Les messages privés des floods sont nettoyés : passage à une autre page ou confirmation supprime le message éphémère précédent ; succès et abandon disparaissent après trois secondes. Les listes, confirmations en attente et erreurs expirent après cinq minutes. Le tableau public est conservé. Ces minuteries ne survivent pas au redémarrage du bot.
 
 Les annonces de validation sont supprimées dès que leur demande est terminée (automatiquement ou manuellement) ou annulée. Le contrôle a lieu à l’actualisation du tableau, environ chaque minute, via `GET /demandes/statuts`. Il vérifie un état fermé explicite, sans déduire la clôture d’un résultat manquant. Les annonces anciennes sont récupérables avec `ValidationNotifications.recoverAnnouncements()` puis `cleanClosed()` ; seuls les messages du bot portant le texte et le titre exacts des annonces sont concernés.
+
+### Connexion privée au site (test)
+
+`/connexion` est réservée à l'ID Discord `1544667516364652659` (comme `/solde-terrain`) et au serveur configuré. Le bot transmet l'identité de l'interaction à `POST /api/bot/v1/connexion`, puis répond uniquement en éphémère avec un lien personnel. Aucun paramètre ne permet de choisir un autre compte. La commande peut être visible aux autres membres, mais leur utilisation est refusée avant tout appel API.
+
+Ce parcours est une connexion par lien privé, pas OAuth2. Le lien est un secret temporaire : il expire en 120 secondes, ne fonctionne qu'une fois et chaque nouvelle demande remplace le précédent. Ne pas le partager. Le site affiche le compte et demande confirmation avant d'ouvrir la session. Les refus et erreurs ne doivent jamais journaliser le lien ou le secret API.
+
+Si ton ID Discord est déjà associé par un administrateur à un joueur mais qu’aucun compte UPTEP n’existe, le lien propose de créer un compte membre à la confirmation. Un compte existant non lié doit être associé explicitement par un administrateur ; aucun compte désactivé n’est réactivé.
+
+La simulation `/connexion-test` a été retirée. `/connexion` reste réservée à NoobEnCDI. La création d’un compte utilise le pseudo du joueur comme identifiant et nom affiché, puis le site propose de définir un mot de passe. Les migrations et tests isolés du dépôt du site conservent la couverture des inscriptions.
