@@ -8,6 +8,7 @@ Bot Node.js pour demander des ressources, déclarer des convois, valider, termin
 | --- | --- | --- |
 | `/aide` | Tous les membres du serveur | Guide privé des commandes, boutons et droits. |
 | `/livraisons vitesse:7` | Joueur associé à Discord | Liste privée des demandes validées, distances et trajets estimés. |
+| `/suspendre-demande demande:123` | Administrateurs de `ADMIN_DISCORD_IDS` associés | Remet une demande validée et ouverte en attente, sans effacer les convois. |
 | `/recap-demandes` | Administrateurs de `ADMIN_DISCORD_IDS` associés | Récapitulatif privé de toutes les demandes par joueur, y compris les joueurs sans demande. |
 | `/historique-demandes`, `/historique-convois`, `/stats-convois` | Chefs de `ADMIN_DISCORD_IDS` associés | Historiques et statistiques privés. |
 | `/solde-terrain` | ID de test autorisé, voir section dédiée | Lecture incrémentale des rapports, sauvegarde via l’API et solde public. |
@@ -51,6 +52,12 @@ Changer les IDs de serveur/salon dans `.env`, puis redémarrer pour basculer. Un
 Les commandes ci-dessous fonctionnent dans **tous les salons du serveur configuré**, avec leur pagination et le détail des demandes. Leurs réponses sont **privées** : seul l’utilisateur de la commande les voit.
 
 Pour les utiliser, saisir `/` dans Discord, choisir une commande du bot UPTEP+, puis renseigner les options souhaitées. Sans filtre, les historiques et `/stats-convois` couvrent les **7 derniers jours**, journée en cours incluse. `/recap-demandes` couvre toujours tout l’historique.
+
+### `/suspendre-demande demande:123`
+
+Remet la demande nº 123 en attente de validation. Seuls les administrateurs de `ADMIN_DISCORD_IDS`, associés à un joueur UPTEP, peuvent l’utiliser ; le droit chaîne seul ne suffit pas. La réponse est privée. La vérification est effectuée à chaque appel côté bot et API, y compris lors d’une reprise idempotente.
+
+Seules les demandes validées et non clôturées peuvent être suspendues. Le restant, les convois déclarés et la date de création sont conservés. La demande quitte les livraisons disponibles et son annonce de validation est retirée. Les nouveaux convois ne peuvent plus être déclarés pour cette demande avant une nouvelle validation via le bouton habituel. Une demande partiellement livrée doit être revalidée avant d’ajuster son restant ; le formulaire des demandes non validées ne doit pas réinitialiser les livraisons. La suspension est enregistrée dans les reçus transactionnels `bot_commandes`.
 
 ### `/recap-demandes`
 

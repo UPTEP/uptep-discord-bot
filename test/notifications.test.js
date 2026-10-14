@@ -1,6 +1,13 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {ValidationNotifications} from '../src/notifications.js';
 const d={id:'12',valide:true,pseudo_demandeur:'User',nbpomme_restant:'12',nbmateriaux_restant:'3'};
+test('Suspension removes old announcement; revalidation can announce again with a new nonce',async()=>{
+ const state={data:{},save(){}},sent=[],deleted=[];let valid=true;
+ const channel={client:{user:{id:'bot'}},permissionsFor:()=>({has:()=>true}),send:async payload=>{sent.push(payload);return {id:String(sent.length)};},messages:{fetch:async id=>({author:{id:'bot'},content:'@everyone Une demande de ressources vient d’être validée !',embeds:[{title:'Demande #12 validée · User'}],delete:async()=>deleted.push(id)})}};
+ const notices=new ValidationNotifications({state,getChannel:()=>channel,api:{request:async()=>({demandes:[{id:'12',valide:valid,fini:false,annulee:false}]})}});
+ notices.enqueue({...d,date_validation:'2026-10-14T10:00:00Z'});await notices.flush();valid=false;await notices.cleanClosed();assert.deepEqual(deleted,['1']);await notices.flush();assert.equal(sent.length,1);
+ valid=true;notices.enqueue({...d,date_validation:'2026-10-14T11:00:00Z'});await notices.flush();assert.equal(sent.length,2);assert.notEqual(sent[0].nonce,sent[1].nonce);assert(sent[1].nonce.length<=25);
+});
 test('successful validation announces everyone only once, even concurrent flush/replay',async()=>{
  const state={data:{},save(){}};const sent=[];const channel={client:{user:{}},permissionsFor:()=>({has:()=>true}),send:async p=>{sent.push(p);return {id:'123'};}};
  const n=new ValidationNotifications({state,getChannel:()=>channel});n.enqueue({...d,valide:false});await n.flush();assert.equal(sent.length,0);
