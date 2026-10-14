@@ -1,3 +1,4 @@
+import {receiveWebEvents} from './web-events.js';
 import {SiteLogin,loginCommand} from './login.js';
 import {Floods} from './floods.js';
 import {helpCommand,helpPayload} from './help.js';
@@ -18,7 +19,7 @@ const convoyNotifications=new ConvoyNotifications({state,client});
 async function refresh(){
  if(refreshing)return refreshing;
  refreshing=(async()=>{const rows=await snapshot.get();const payload=boardPayload(rows);if(board)await board.edit(payload);else{board=await channel.send(payload);state.setBoard(key,board.id);}})();
- try{const result=await refreshing;await notifications.cleanClosed().catch(e=>console.error('Nettoyage annonces :',e.name));await notifications.flush().catch(e=>console.error(e.message));await convoyNotifications.flush().catch(()=>console.error('MP convoi différé.'));return result;}finally{refreshing=null;}
+ try{const result=await refreshing;await notifications.cleanClosed().catch(e=>console.error('Nettoyage annonces :',e.name));await receiveWebEvents({api,notifications,convoyNotifications}).catch(e=>console.error('Synchronisation site :',e.name));await notifications.cleanClosed().catch(e=>console.error('Nettoyage annonces :',e.name));await notifications.flush().catch(e=>console.error(e.message));await convoyNotifications.flush().catch(()=>console.error('MP convoi différé.'));return result;}finally{refreshing=null;}
 }
 const ui=new UI({api,snapshot,state,refresh,notifications,convoyNotifications});
 const reports=new Reports({api,state});

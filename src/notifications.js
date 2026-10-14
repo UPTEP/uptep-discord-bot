@@ -6,8 +6,9 @@ export class ValidationNotifications {
  enqueue(demand){
   if(!demand?.valide)return;
   const key=String(demand.id);this.state.data.validationNotifications??={};
-  if(this.state.data.validationNotifications[key]&&!this.state.data.validationNotifications[key].removed)return;
-  this.state.data.validationNotifications[key]={demand,sent:null};this.state.save();
+  const prior=this.state.data.validationNotifications[key];
+  if(prior&&!prior.removed&&prior.demand.date_validation===demand.date_validation)return;
+  this.state.data.validationNotifications[key]={demand,sent:null,extraMessages:prior&&!prior.removed?[...(prior.extraMessages??[]),prior.sent].filter(Boolean):[]};this.state.save();
  }
  flush(){if(this.running)return this.running;this.running=this.sendPending().finally(()=>{this.running=null;});return this.running;}
  cleanClosed(){if(this.running)return this.running.then(()=>this.cleanClosed());this.running=this.removeClosed().finally(()=>{this.running=null;});return this.running;}
