@@ -20,8 +20,9 @@ export const reportCommands=[
  textOption(c,'debut','Début inclus, JJ-MM-AAAA (renseigner aussi fin)');textOption(c,'fin','Fin incluse, JJ-MM-AAAA (maximum 366 jours)');
  return c.toJSON();
 });
-const kinds={'historique-demandes':'demandes','historique-convois':'convois','stats-convois':'statistiques'};
-const titles={demandes:'Historique des demandes',convois:'Historique des convois',statistiques:'Statistiques des convois',detail:'Détail de la demande'};
+reportCommands.push(new SlashCommandBuilder().setName('recap-demandes').setDescription('Récapitulatif des demandes par joueur, même sans demande (admins uniquement)').toJSON());
+const kinds={'historique-demandes':'demandes','historique-convois':'convois','stats-convois':'statistiques','recap-demandes':'recap-demandes'};
+const titles={demandes:'Historique des demandes',convois:'Historique des convois',statistiques:'Statistiques des convois',detail:'Détail de la demande','recap-demandes':'Récapitulatif des demandes par joueur'};
 const date=value=>value?new Date(value).toLocaleString('fr-FR',{timeZone:'Europe/Paris',dateStyle:'short',timeStyle:'short'}):'—';
 const qty=(a,b)=>`🍎 ${fmt(a)} · 🪵 ${fmt(b)}`;
 const safe=value=>esc(String(value??'—'));
@@ -31,9 +32,11 @@ const mean=value=>{const [whole,decimal='00']=String(value).split('.');return fm
 export function reportPayload(kind,data,sid,params={}){
  const lines=data.lignes??[];const embed=new EmbedBuilder().setColor(0x73824a).setTitle(titles[kind]);
  let heading='';
+ if(kind==='recap-demandes')heading='Tout l’historique S5 · joueurs de la chaîne et anciens demandeurs, y compris sans demande.\nEffectuées : toutes, même annulées. Validées : terminées comprises, annulées exclues. Dates en heure de Paris.';
  if(data.periode)heading=`Du ${data.periode.debut} au ${data.periode.fin} · ${data.periode.jours} jours (Paris)\n`+(kind==='demandes'?'Période basée sur la date de demande.':'Période basée sur la date d’envoi déclarée.')+'\n';
  const filters=Object.entries(params).filter(([k])=>['joueur','etat','expediteur','destinataire','demande'].includes(k)).map(([k,v])=>`${k} : ${safe(v)}`);if(filters.length)heading+=filters.join(' · ')+'\n';
  const blocks=lines.map(r=>{
+  if(kind==='recap-demandes')return `**${safe(r.pseudo)}**\nEffectuées : **${fmt(r.demandes_effectuees)}** · Validées : **${fmt(r.demandes_validees)}**\nTerminées : **${fmt(r.demandes_terminees)}** · Annulées : **${fmt(r.demandes_annulees)}**\nDernière demande : ${r.derniere_demande?date(r.derniere_demande):'Aucune demande'}`;
   if(kind==='demandes')return `**#${r.id} · ${safe(r.pseudo_demandeur)} · ${demandStatus(r)}**\n${safe(r.objet)}${r.niveau?' niv. '+r.niveau:''} · ${qty(r.nbpomme_original,r.nbmateriaux_original)}\nDemande : ${date(r.date_demande)} · validation : ${date(r.date_validation)}\n${r.annulee?'Annulation : '+date(r.date_annulation):'Fin : '+date(r.date_fin)}`;
   if(kind==='statistiques')return `**${safe(r.pseudo)}**\nEnvoyé : ${qty(r.pommes_envoyees,r.materiaux_envoyes)} (${fmt(r.envois)} convois)\nReçu : ${qty(r.pommes_recues,r.materiaux_recus)} (${fmt(r.receptions)} convois)\nMoy./jour envoyé : 🍎 ${mean(r.moyenne_pommes_envoyees)} · 🪵 ${mean(r.moyenne_materiaux_envoyes)}\nMoy./jour reçu : 🍎 ${mean(r.moyenne_pommes_recues)} · 🪵 ${mean(r.moyenne_materiaux_recus)}`;
   return convoyLine(r,kind!=='detail');
@@ -49,7 +52,7 @@ export function reportPayload(kind,data,sid,params={}){
  // Discord limits the entire embed to 6000 characters; cap user labels before rendering if needed.
  const budget=Math.floor((5500-heading.length)/(blocks.length||1));
  for(const f of embed.data.fields??[])f.value=short(f.value,Math.min(1024,budget));
- embed.setFooter({text:`Page ${data.page}/${data.pages} · ${data.total} résultat(s) · ${kind==='statistiques'?'Convois annulés exclus · moyenne sur tous les jours':'Déclarations enregistrées, arrivées non confirmées'}`});
+ embed.setFooter({text:`Page ${data.page}/${data.pages} · ${data.total} résultat(s) · ${kind==='recap-demandes'?'Classement par nombre de demandes':kind==='statistiques'?'Convois annulés exclus · moyenne sur tous les jours':'Déclarations enregistrées, arrivées non confirmées'}`});
  const components=[];
  if(kind==='demandes'&&lines.length)components.push(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`uptep:reportDetail:${sid}`).setPlaceholder('Voir une demande et ses convois').addOptions(lines.map(d=>({label:short(`#${d.id} · ${d.pseudo_demandeur} · ${demandStatus(d)}`,100),value:String(d.id)})))));
  const buttons=[];
@@ -68,7 +71,7 @@ export class Reports {
    let sid,session,page=1;
    if(i.isChatInputCommand()){
     const kind=kinds[i.commandName];if(!kind)throw new UserError('Commande inconnue.');
-    const params={};for(const key of ['joueur','etat','periode','debut','fin','expediteur','destinataire','demande']){const v=i.options.getString(key);if(v!==null)params[key]=v;}
+    const params={};for(const key of kind==='recap-demandes'?[]:['joueur','etat','periode','debut','fin','expediteur','destinataire','demande']){const v=i.options.getString(key);if(v!==null)params[key]=v;}
     sid=this.state.create(i.user.id,'report',{kind,params,page},15*60*1000);session=this.state.get(sid,i.user.id);
    }else{
     const [,action,id,arg]=i.customId.split(':');sid=id;session=this.state.get(sid,i.user.id);

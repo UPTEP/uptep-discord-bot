@@ -8,6 +8,7 @@ Bot Node.js pour demander des ressources, déclarer des convois, valider, termin
 | --- | --- | --- |
 | `/aide` | Tous les membres du serveur | Guide privé des commandes, boutons et droits. |
 | `/livraisons vitesse:7` | Joueur associé à Discord | Liste privée des demandes validées, distances et trajets estimés. |
+| `/recap-demandes` | Administrateurs de `ADMIN_DISCORD_IDS` associés | Récapitulatif privé de toutes les demandes par joueur, y compris les joueurs sans demande. |
 | `/historique-demandes`, `/historique-convois`, `/stats-convois` | Chefs de `ADMIN_DISCORD_IDS` associés | Historiques et statistiques privés. |
 | `/solde-terrain` | ID de test autorisé, voir section dédiée | Lecture incrémentale des rapports, sauvegarde via l’API et solde public. |
 | Validation d’une demande via le bot | Droit chaîne ou administrateur associé | Annonce `@everyone` dans le salon des convois. |
@@ -47,9 +48,15 @@ Changer les IDs de serveur/salon dans `.env`, puis redémarrer pour basculer. Un
 
 ## Commandes slash : historiques et statistiques
 
-Les trois commandes ci-dessous fonctionnent dans **tous les salons du serveur configuré**, avec leur pagination et le détail des demandes. Leurs réponses sont **privées** : seul l’utilisateur de la commande les voit.
+Les commandes ci-dessous fonctionnent dans **tous les salons du serveur configuré**, avec leur pagination et le détail des demandes. Leurs réponses sont **privées** : seul l’utilisateur de la commande les voit.
 
-Pour les utiliser, saisir `/` dans Discord, choisir une commande du bot UPTEP+, puis renseigner les options souhaitées. Sans filtre, le rapport couvre les **7 derniers jours**, journée en cours incluse.
+Pour les utiliser, saisir `/` dans Discord, choisir une commande du bot UPTEP+, puis renseigner les options souhaitées. Sans filtre, les historiques et `/stats-convois` couvrent les **7 derniers jours**, journée en cours incluse. `/recap-demandes` couvre toujours tout l’historique.
+
+### `/recap-demandes`
+
+Récapitulatif sur **tout l’historique S5**, sans option de période : demandes effectuées, validées, terminées, annulées et date de la dernière demande par joueur (heure de Paris). Les joueurs de `chaine_members` sans demande apparaissent avec des zéros et « Aucune demande » ; les anciens demandeurs restent inclus. Les demandes effectuées incluent les annulées ; les validées incluent les terminées et excluent les annulées.
+
+Le classement suit le nombre de demandes décroissant, avec huit joueurs par page. La réponse est privée. Le bot et l’API vérifient `ADMIN_DISCORD_IDS` à chaque consultation, y compris lors d’un changement de page. Le droit chaîne ou Administrateur Discord seul ne donne pas accès. L’association à un joueur UPTEP reste requise, comme pour les autres rapports.
 
 ### `/historique-demandes`
 
