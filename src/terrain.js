@@ -1,5 +1,4 @@
 import {terrainEvidence} from './terrain-evidence.js';
-import {spawn} from 'node:child_process';
 import {MessageFlags,PermissionFlagsBits,SlashCommandBuilder} from 'discord.js';
 export const TERRAIN_USER='1544667516364652659';
 export const terrainCommand=new SlashCommandBuilder().setName('solde-terrain').setDescription('Solde cumulé des prises et pertes de terrain (test NoobEnCDI)').toJSON();
@@ -37,17 +36,10 @@ Pour un rapport non standard absent du relevé, evidence_id=null et occurrence i
 RELEVÉ STANDARD JSON :\n${JSON.stringify(evidence.events)}
 NOTES DU RELEVÉ :\n${JSON.stringify(evidence.notes)}
 MESSAGES JSON (ordre chronologique) :\n${JSON.stringify(messages)}`;}
-export function runTerrainCodex(messages,{model=process.env.CODEX_MODEL||'gpt-6-luna',runner=process.env.TERRAIN_CODEX_RUNNER||'/usr/local/libexec/uptep-terrain-codex'}={}){
- return new Promise((resolve,reject)=>{
-  const child=spawn('/usr/bin/sudo',['-n','-u','uptep-codex','--',runner,model],{stdio:['pipe','pipe','pipe'],env:{PATH:'/usr/bin:/bin',LANG:'C.UTF-8'}});
-  let output='',tooLarge=false;const timer=setTimeout(()=>{child.kill('SIGTERM');reject(new Error('Analyse trop longue. Réessaie plus tard.'));},540000);timer.unref();
-  child.stdout.on('data',b=>{output+=b;if(output.length>2000000){tooLarge=true;child.kill('SIGTERM');}});
-  child.stderr.on('data',()=>{}); // Never expose CLI logs/auth or prompt contents to Discord.
-  child.stdin.on('error',()=>{});child.on('error',()=>{clearTimeout(timer);reject(new Error('Service Codex indisponible.'));});
-  child.on('close',code=>{clearTimeout(timer);if(code!==0||tooLarge)return reject(new Error('Codex n’a pas terminé l’analyse. Vérifier sa connexion et l’accès au modèle configuré.'));try{resolve(JSON.parse(output));}catch{reject(new Error('Réponse Codex invalide, aucun solde publié.'));}});
-  child.stdin.end(terrainPrompt(messages));
- });
+export function runTerrainCodex(){
+ return Promise.reject(new Error('L’analyse Codex est réservée au service terrain protégé.'));
 }
+
 const normalized=s=>s.replace(/[\s\u00a0\u202f]/g,'');
 export function validateTerrain(result,messages){
  if(!result||!Array.isArray(result.movements)||!Array.isArray(result.warnings)||result.movements.length>10000||!result.warnings.every(x=>typeof x==='string'))fail('Analyse invalide.');

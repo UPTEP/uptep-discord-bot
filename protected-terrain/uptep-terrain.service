@@ -1,0 +1,47 @@
+[Unit]
+Description=UPTEP protected Discord Codex terrain command
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=uptep-codex
+Group=uptep-codex
+WorkingDirectory=/opt/uptep-terrain
+EnvironmentFile=/etc/uptep-terrain-service.env
+Environment=HOME=/var/lib/uptep-codex
+Environment=CODEX_HOME=/var/lib/uptep-codex/.codex
+Environment=PATH=/usr/bin:/bin
+ExecStart=/usr/bin/node /opt/uptep-terrain/service.js
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=20
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/uptep-codex
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryMax=2G
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

@@ -1,25 +1,35 @@
 # UPTEP — Bot Discord
 
-Bot Node.js pour demander des ressources, déclarer des convois, valider, terminer ou annuler des demandes et annuler des déclarations. Les commandes slash permettent de consulter les historiques et statistiques, de classer les livraisons par distance et de suivre le solde de terrain. Le bot annonce les validations dans le salon et notifie les destinataires des convois par MP. Il utilise exclusivement l’API UPTEP et ne se connecte pas directement à PostgreSQL.
+Bot de suivi des demandes de ressources, convois et floods de l’alliance UPTEP. Il utilise l’API du site, sans connexion directe à PostgreSQL. Les demandes et convois partagent leurs données avec la page [Demandes et convois](https://uptep.top/convois.php).
 
-## Repères rapides
+## Commandes et droits
 
-| Fonction | Accès | Résultat |
+| Commande ou action | Accès | Résultat |
 | --- | --- | --- |
-| `/aide` | Tous les membres du serveur | Guide privé des commandes, boutons et droits. |
-| `/livraisons vitesse:7` | Joueur associé à Discord | Liste privée des demandes validées, distances et trajets estimés. |
-| `/suspendre-demande demande:123` | Administrateurs de `ADMIN_DISCORD_IDS` associés | Remet une demande validée et ouverte en attente, sans effacer les convois. |
-| `/recap-demandes` | Administrateurs de `ADMIN_DISCORD_IDS` associés | Récapitulatif privé de toutes les demandes par joueur, y compris les joueurs sans demande. |
-| `/historique-demandes`, `/historique-convois`, `/stats-convois` | Chefs de `ADMIN_DISCORD_IDS` associés | Historiques et statistiques privés. |
-| `/solde-terrain` | ID de test autorisé, voir section dédiée | Lecture incrémentale des rapports, sauvegarde via l’API et solde public. |
-| Validation d’une demande via le bot | Droit chaîne ou administrateur associé | Annonce `@everyone` dans le salon des convois. |
-| Déclaration d’un convoi via le bot | Joueur associé | MP au demandeur : expéditeur, quantités et arrivée prévue. |
+| `/aide` | Membres du serveur | Guide privé des commandes et boutons. |
+| `/livraisons vitesse:7` | Joueur UPTEP associé à Discord | Demandes à livrer, distances et durées aller estimées. |
+| `/chaine` | Joueur UPTEP associé à Discord | Liste publique des membres, grades et liens Fourmizzz. |
+| Créer une demande ou déclarer un convoi | Joueur UPTEP associé à Discord | Enregistrement après confirmation privée. |
+| Modifier, ajuster, terminer ou annuler une demande | Demandeur ou responsable | Mise à jour avec contrôle des droits et des quantités. |
+| Valider une demande | Droit chaîne sur un compte actif ou `ADMIN_DISCORD_IDS` | Validation et annonce dans le salon des convois. |
+| Annuler un convoi déclaré | Expéditeur ou responsable | Annulation de la déclaration et recalcul du restant. |
+| `/suspendre-demande demande:123` | `ADMIN_DISCORD_IDS` | Retour en attente sans supprimer les convois existants. |
+| `/historique-demandes`, `/historique-convois`, `/stats-convois`, `/recap-demandes` | `ADMIN_DISCORD_IDS` | Rapports privés. |
+| Boutons de suivi des floods | Joueur UPTEP associé à Discord | Déclarations et listes privées, avec notifications aux cibles identifiées. |
+| `/connexion` | NoobEnCDI | Lien privé à usage unique vers le site. |
+| `/solde-terrain` | NoobEnCDI, via le service protégé | Analyse incrémentale et publication du solde de terrain. |
 
-Les MP bloqués sont abandonnés sans annonce de secours dans le salon. Les notifications concernent les nouvelles opérations effectuées via le bot et ne sont pas envoyées rétroactivement.
+L’association Discord doit être unique dans `chaine_members` et correspondre à un joueur actuellement présent dans UPTEP. La liste `ADMIN_DISCORD_IDS` ne contourne pas cette condition. Les droits sont revérifiés côté API ; la liste est relue sans redémarrage.
 
-## Installation
+Sur le **site**, les chefs (`is_chef`) et administrateurs accèdent aux historiques, statistiques et récapitulatifs. Les commandes Discord conservent leur contrôle par `ADMIN_DISCORD_IDS`. Les statistiques et le récapitulatif du site affichent tous les résultats sans pagination ; les rapports Discord utilisent des pages de huit lignes.
 
-Node.js 24.17 minimum. Installer les sources hors du répertoire web, par exemple `/home/uptep/discord-bot`, puis :
+Le bot enregistre des déclarations : il ne déclenche ni livraison ni attaque dans Fourmizzz. Une heure d’arrivée est une estimation, pas une confirmation de réception.
+
+Voir le [guide des commandes](docs/commandes.md) pour les options, formats de rapports, calculs, filtres et règles de modification.
+
+## Installation du bot principal
+
+Prérequis : Node.js **24.17 ou supérieur**, une application Discord et un accès à l’API UPTEP. Installer le bot hors du dossier web.
 
 ```sh
 npm ci --omit=dev --ignore-scripts
@@ -27,232 +37,98 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Renseigner le token Discord, l’ID de l’application, du serveur et du salon, ainsi que le secret API UPTEP. `npm run check` contrôle la configuration et les lectures API sans envoyer de message Discord ; `npm start` démarre le bot et publie ou retrouve son tableau dans le salon configuré.
-
-Avec PM2 : `pm2 start ecosystem.config.cjs`, puis `pm2 save`. Adapter le chemin de l’interpréteur Node dans ce fichier à l’installation. Configurer séparément le démarrage automatique du gestionnaire de processus.
-
-## Accès et fonctionnement
-
-Le bot nécessite Voir le salon, Envoyer des messages, Intégrer des liens et Voir les anciens messages. La permission « Mentionner @everyone, @here et tous les rôles » est nécessaire pour les annonces de validation. Message Content Intent est nécessaire uniquement au suivi `/solde-terrain`. La permission Administrateur Discord n’est pas nécessaire. Un seul serveur est actif par processus. Le tableau et ses boutons utilisent le salon défini par `CONVOY_CHANNEL_ID` ; les commandes slash sont utilisables dans tous les salons et fils accessibles de ce serveur, sous réserve des droits propres à chaque commande.
-
-Les joueurs doivent être associés par leur ID Discord dans `chaine_members` et présents dans UPTEP. Le droit chaîne d’un compte actif ou la liste `ADMIN_DISCORD_IDS` accorde les actions administratives. Cette liste est relue par l’API sur le même serveur dans `/home/uptep/discord-bot/.env` ; déplacer le bot sur une autre machine nécessite d’adapter cette configuration côté API. Elle ne contourne pas l’association obligatoire.
-
-Les demandes utilisent JJ-MM-AAAA dans les formulaires. La déclaration de convoi accepte une ligne du jeu ou une saisie manuelle. Dans une ligne copiée, les noms des ressources sont facultatifs : la première quantité est toujours la nourriture, la seconde les matériaux. Exemple accepté : `Vous allez livrer 0 et 100 000 à Nythrakar dans 2H 57m 57s`. Le retour, la mention Annuler et un tiret final sont facultatifs ; les puces et le gras sont acceptés. Le bot ne lance ni n’annule aucun envoi dans Fourmizzz : il gère le suivi.
-
-Changer les IDs de serveur/salon dans `.env`, puis redémarrer pour basculer. Un salon Discord de test utilise la vraie base si l’API configurée reste celle de production. Prévoir une API distincte pour isoler entièrement les tests.
-
-## Données locales
-
-`data/state.json` contient l’ID du tableau, les confirmations privées avec leur commande idempotente et les files/statuts des annonces de validation et des MP de convois. Garder ce dossier lors des déploiements. Ne jamais publier ce fichier ni `.env`. Les réponses privées des boutons du tableau et des rapports sont supprimées après cinq minutes ; les messages de réussite après dix secondes. `/livraisons` reste éphémère mais n’utilise pas cette minuterie. `/solde-terrain` supprime sa progression privée après succès et publie le solde dans le salon. Ces minuteries ne survivent pas à un redémarrage du processus.
-
-`npm test` exécute les tests locaux sans envoyer de messages Discord ni modifier l’API. Les secrets ne sont pas inclus. Code sous licence MIT.
-
-## Commandes slash : historiques et statistiques
-
-Les commandes ci-dessous fonctionnent dans **tous les salons du serveur configuré**, avec leur pagination et le détail des demandes. Leurs réponses sont **privées** : seul l’utilisateur de la commande les voit.
-
-Pour les utiliser, saisir `/` dans Discord, choisir une commande du bot UPTEP+, puis renseigner les options souhaitées. Sans filtre, les historiques et `/stats-convois` couvrent les **7 derniers jours**, journée en cours incluse. `/recap-demandes` couvre toujours tout l’historique.
-
-### `/suspendre-demande demande:123`
-
-Remet la demande nº 123 en attente de validation. Seuls les administrateurs de `ADMIN_DISCORD_IDS`, associés à un joueur UPTEP, peuvent l’utiliser ; le droit chaîne seul ne suffit pas. La réponse est privée. La vérification est effectuée à chaque appel côté bot et API, y compris lors d’une reprise idempotente.
-
-Seules les demandes validées et non clôturées peuvent être suspendues. Le restant, les convois déclarés et la date de création sont conservés. La demande quitte les livraisons disponibles et son annonce de validation est retirée. Les nouveaux convois ne peuvent plus être déclarés pour cette demande avant une nouvelle validation via le bouton habituel. Une demande partiellement livrée doit être revalidée avant d’ajuster son restant ; le formulaire des demandes non validées ne doit pas réinitialiser les livraisons. La suspension est enregistrée dans les reçus transactionnels `bot_commandes`.
-
-### `/recap-demandes`
-
-Récapitulatif sur **tout l’historique S5**, sans option de période : demandes effectuées, validées, terminées, annulées et date de la dernière demande par joueur (heure de Paris). Les joueurs de `chaine_members` sans demande apparaissent avec des zéros et « Aucune demande » ; les anciens demandeurs restent inclus. Les demandes effectuées incluent les annulées ; les validées incluent les terminées et excluent les annulées.
-
-Le classement suit le nombre de demandes décroissant, avec huit joueurs par page. La réponse est privée. Le bot et l’API vérifient `ADMIN_DISCORD_IDS` à chaque consultation, y compris lors d’un changement de page. Le droit chaîne ou Administrateur Discord seul ne donne pas accès. L’association à un joueur UPTEP reste requise, comme pour les autres rapports.
-
-### `/historique-demandes`
-
-Consulter les demandes de ressources, y compris celles qui sont terminées ou annulées.
-
-| Option facultative | Utilisation |
+| Variable | Usage |
 | --- | --- |
-| `joueur` | Pseudo exact du demandeur en jeu. |
-| `etat` | Tous les états, À valider, En cours, Terminées ou Annulées. |
-| `periode`, `debut`, `fin` | Choisir la période décrite plus bas. |
+| `DISCORD_TOKEN` | Token de l’application Discord. |
+| `DISCORD_CLIENT_ID` | ID de l’application, à renseigner en production. |
+| `DISCORD_GUILD_ID` | Serveur Discord autorisé. |
+| `CONVOY_CHANNEL_ID` | Salon du tableau des demandes et convois. |
+| `FLOOD_CHANNEL_ID` | Salon des floods, facultatif. |
+| `UPTEP_API_URL` | `https://uptep.top/api/bot/v1`. |
+| `UPTEP_API_TOKEN` | Secret API avec les scopes des fonctions utilisées. |
+| `ADMIN_DISCORD_IDS` | IDs autorisés pour les rapports Discord et la suspension. |
+| `BOT_DATA_DIR` | Dossier d’état, `data` par défaut. |
 
-La liste affiche le demandeur, l’objet et le niveau, les quantités demandées, l’état et les dates de création, de validation et de fin ou d’annulation. **Sélectionner une demande dans le menu** pour consulter les quantités restantes, le validateur, la date souhaitée et les convois associés, toutes dates confondues. Le détail distingue une clôture automatique d’une clôture manuelle.
+L’API de production lit aussi la liste d’administrateurs dans `/home/uptep/discord-bot/.env`. Déplacer le bot nécessite d’adapter cette lecture côté API.
 
-Exemple : choisir `/historique-demandes`, puis `joueur:Achak` et `etat:Terminées` pour retrouver les demandes terminées d’Achak créées pendant la période sélectionnée.
+```sh
+npm run check  # Configuration et lectures API ; aucun message Discord.
+npm start      # Connexion et publication/reprise des tableaux.
+```
 
-### `/historique-convois`
+Pour la production avec PM2 :
 
-Consulter les déclarations de convois avec leurs quantités, l’expéditeur, le destinataire, le numéro de demande, la date d’envoi et l’arrivée prévue.
+```sh
+pm2 start ecosystem.config.cjs
+pm2 save
+```
 
-| Option facultative | Utilisation |
+Le fichier fourni utilise `/home/uptep/discord-bot` et `/usr/bin/node`. Configurer séparément le démarrage automatique de PM2. Les commandes principales sont enregistrées au démarrage ; `/solde-terrain` est enregistré par son service indépendant.
+
+### Permissions Discord
+
+Autoriser la lecture des salons et de l’historique, l’envoi de messages et les liens intégrés, y compris dans les fils utilisés. La mention `@everyone` nécessite sa permission spécifique pour les annonces de validation. **Message Content Intent** est nécessaire à `/solde-terrain`. Le bot n’a pas besoin du droit Administrateur Discord.
+
+Un salon de test utilise la vraie base si l’API reste celle de production. Les tests locaux ci-dessous n’envoient pas de messages Discord et ne modifient pas l’API.
+
+## Données, synchronisation et notifications
+
+Conserver **`data/state.json`** lors d’un déploiement : il contient les tableaux, confirmations idempotentes et files de notifications. Ne jamais publier `.env`, `data/` ou les identifiants Codex.
+
+Les tableaux sont actualisés environ chaque minute. Une validation effectuée dans Discord ou sur le site produit une annonce `@everyone`. Un convoi déclaré produit un MP au demandeur. Les opérations du site enregistrent un événement dans `convoy_web_events`, dans la même transaction que l’opération ; le bot sauvegarde cet événement dans sa file locale avant de l’acquitter via `/notifications-web`.
+
+Les annonces sont retirées quand une demande est suspendue, terminée ou annulée. Les erreurs temporaires sont réessayées ; les MP bloqués sont abandonnés sans message public de secours. Les nonces limitent les doublons rapprochés, sans garantir une livraison exactement une fois après une longue coupure. Les anciennes opérations ne sont pas notifiées rétroactivement.
+
+Les formulaires et erreurs restent privés. Les réponses ordinaires expirent après cinq minutes, les confirmations réussies après dix secondes ; les floods utilisent un nettoyage plus rapide après succès. Ces minuteries ne survivent pas à un redémarrage.
+
+## Codex : service protégé
+
+`/solde-terrain` est traité par **`uptep-terrain.service`**, sous `uptep-codex`, et non par le processus PM2 modifiable par `uptep`.
+
+| Élément | Emplacement et protection |
 | --- | --- |
-| `expediteur` | Pseudo exact du joueur qui a envoyé les ressources. |
-| `destinataire` | Pseudo exact du joueur qui les reçoit. |
-| `demande` | Numéro de la demande, sans le `#`. |
-| `periode`, `debut`, `fin` | Choisir la période décrite plus bas. |
+| Code et dépendances du service | `/opt/uptep-terrain`, détenus par root. |
+| Configuration du service | `/etc/uptep-terrain-service.env`, root, mode 600. |
+| Authentification Codex | `/var/lib/uptep-codex/.codex`, privée au compte dédié. |
+| Lanceur limité | `/usr/local/libexec/uptep-terrain-codex`, root:uptep-codex, mode 750. |
+| Binaire et schéma Codex | `/opt/uptep-codex`, accès réservé à root et au groupe dédié. |
+| Protection contre les rejeux | `/var/lib/uptep-codex/terrain-service/interactions.json`. |
 
-Les déclarations annulées restent visibles, avec la mention **Annulé**, la date et l’auteur de l’annulation.
+Le service reçoit les interactions directement de Discord et contrôle l’auteur, l’application, le serveur et la fraîcheur de la commande. Il n’expose aucun port ni socket local de soumission. **`uptep` n’a aucune autorisation sudo pour appeler Codex** et peut continuer à modifier le site et le bot principal.
 
-Exemple : `/historique-convois demande:11` affiche les convois de la demande nº 11 envoyés pendant la période sélectionnée. Pour retrouver tous ses convois indépendamment de leur date, ouvrir le détail de la demande depuis `/historique-demandes`.
+Le modèle reste `gpt-6-luna`, avec analyse structurée en lecture seule et outils shell/apps/navigation désactivés. Le sous-processus Codex ne reçoit pas les tokens Discord/API. Les messages analysés consomment les quotas du compte Codex configuré.
 
-### `/stats-convois`
+Actuellement, seul l’ID Discord de NoobEnCDI est autorisé. Une future liste multi-utilisateurs devra être gérée dans la configuration protégée par root et appliquée à tous les contrôles concernés ; elle n’est pas encore implémentée. Modifier `ADMIN_DISCORD_IDS` ne donne pas accès à Codex.
 
-Afficher, pour chaque joueur ayant une activité pendant la période :
+Les changements du service exigent un déploiement explicite par root : modifier les sources du bot ne met jamais à jour le service protégé. Le token Discord est partagé pour conserver l’application existante ; un développeur contrôlant le bot peut perturber ses commandes ou ses messages, sans obtenir le droit de lancer Codex.
 
-- les quantités de nourriture et de matériaux envoyées et reçues ;
-- le nombre de convois envoyés et reçus ;
-- les moyennes quotidiennes envoyées et reçues, pour chaque ressource.
+Voir [l’exploitation du service protégé](protected-terrain/README.md) et [son unité systemd](protected-terrain/uptep-terrain.service).
 
-| Option facultative | Utilisation |
-| --- | --- |
-| `joueur` | Limiter le bilan à un pseudo exact en jeu. |
-| `periode`, `debut`, `fin` | Choisir la période décrite plus bas. |
+## Exploitation et sauvegardes
 
-Exemple : choisir `/stats-convois`, puis `joueur:Achak` et `periode:30 jours` pour consulter son bilan sur 30 jours.
+```sh
+# Sous uptep : bot principal
+pm2 status
+pm2 logs uptep-discord
+pm2 restart uptep-discord
 
-**Calcul : total sur la période ÷ nombre de jours de la période.** Les jours sans activité sont inclus : 70 000 matériaux envoyés sur 7 jours donnent une moyenne de 10 000 par jour, même si tous les envois ont eu lieu le même jour. Les convois annulés sont exclus des totaux et des nombres de convois. Les joueurs sans mouvement pendant la période ne sont pas listés.
+# Sous root : service protégé
+systemctl status uptep-terrain
+journalctl -u uptep-terrain
+systemctl restart uptep-terrain
+```
 
-### Périodes, filtres et navigation
+Sauvegarder les bases via le dispositif du site, `.env` et `data/` pour le bot, ainsi que le runtime protégé, sa configuration, son authentification et son état anti-rejeu. La sauvegarde serveur `/usr/local/sbin/uptep-db-backup` inclut ces derniers dans l’archive root `protected-terrain.tgz`.
 
-Les trois commandes partagent les mêmes options de dates :
+## Vérifications
 
-| Option | Valeurs et comportement |
-| --- | --- |
-| `periode` | **7 jours** par défaut, **30 jours** ou **Dates personnalisées**. |
-| `debut` | Date de début au format **JJ-MM-AAAA**, incluse. |
-| `fin` | Date de fin au format **JJ-MM-AAAA**, incluse. |
+```sh
+npm test
+npm run check
+```
 
-Pour une période personnalisée, renseigner **les deux dates**, par exemple `debut:01-10-2026 fin:11-10-2026`. Elles prennent le dessus sur le choix de période. La durée maximale est de 366 jours et aucune date ne peut être future. Les périodes de 7 ou 30 jours incluent la journée en cours ; les dates et heures utilisent le fuseau **Europe/Paris**.
+Les tests locaux couvrent les confirmations et retries, les permissions, les rapports, les notifications, les floods, le calcul du terrain et la protection des interactions. `npm run check` vérifie l’accès réel en lecture à l’API. Ne pas utiliser `npm start` comme test hors ligne : il agit sur les tableaux Discord.
 
-La période filtre la **date de création** pour les demandes et la **date d’envoi déclarée** pour les convois et les statistiques. Les filtres par pseudo attendent le pseudo exact en jeu, sans distinction entre majuscules et minuscules. Plusieurs filtres peuvent être combinés.
+Une analyse réelle se vérifie en lançant `/solde-terrain` depuis le compte Discord autorisé. Les tests automatisés ne lancent pas de requête Codex facturable.
 
-Les rapports affichent jusqu’à **8 résultats par page**. Les boutons **Précédent** et **Suivant** permettent de naviguer ; le détail d’une demande propose aussi **Retour aux demandes**. Les messages privés disparaissent après cinq minutes : relancer la commande pour consulter à nouveau le rapport.
-
-### Droits et configuration
-
-Ces commandes exigent les deux conditions suivantes :
-
-- l’ID Discord figure dans `ADMIN_DISCORD_IDS` du `.env` ;
-- cet ID est associé de façon unique dans `chaine_members` à un joueur actuellement membre d’UPTEP.
-
-**Le droit chaîne seul ne donne pas accès à ces trois commandes.** Le bot et l’API contrôlent les droits à chaque lecture, y compris lors de la pagination. Les commandes peuvent apparaître dans le menu Discord à un non-chef, mais leur utilisation est refusée.
-
-Les commandes sont enregistrées automatiquement au démarrage dans le serveur défini par `DISCORD_GUILD_ID`. Le bot lit la liste des chefs dans le `.env` de son répertoire de travail ; l’API la lit dans `/home/uptep/discord-bot/.env`. Une suppression de la liste prend effet sans redémarrage. Le secret API doit posséder le scope **`rapports:read`**. Les rapports utilisent les tables existantes : aucune migration de base n’est nécessaire.
-
-### Interprétation des données
-
-Les chiffres représentent les **envois déclarés au bot**, sans confirmation de livraison dans Fourmizzz. Les heures d’arrivée sont prévisionnelles. La date de fin d’une demande correspond à la clôture des déclarations, automatique ou manuelle ; elle ne prouve pas l’arrivée des ressources dans le jeu.
-
-## Modifier une demande avant validation
-
-Le bouton **Modifier une demande** permet au demandeur ou à un responsable (droit chaîne ou liste `ADMIN_DISCORD_IDS`) de corriger une demande en attente : bâtiment/recherche, niveau, pommes, matériaux et date souhaitée. Les champs sont préremplis ; vider la date permet de la supprimer. Au moins une quantité doit rester positive.
-
-Après confirmation, la demande conserve son numéro, son auteur et sa date de création et reste **en attente de validation**. Les quantités demandées et restantes sont mises à jour ensemble. Si la demande a changé ou a été validée entre-temps, la confirmation est refusée : rouvrir le formulaire. La confirmation de validation vérifie aussi que le contenu présenté au responsable n’a pas changé.
-
-## Ajuster le restant d’une demande
-
-Le bouton bleu **Modifier une demande**, dans le tableau des convois, permet au demandeur ou à un responsable (droit chaîne ou liste `ADMIN_DISCORD_IDS`) de modifier une demande **validée et en cours**.
-
-1. Choisir la demande.
-2. Renseigner le **nouveau total encore nécessaire** pour chaque ressource dans le formulaire prérempli. Exemple : 80 000 matériaux restants moins 30 000 produits = saisir **50 000**, pas 30 000.
-3. Vérifier les anciennes et nouvelles quantités, puis confirmer.
-
-Les quantités initiales et les convois déclarés sont conservés. Les ajustements sont historisés séparément avec leur auteur, la date et les valeurs avant/après ; les derniers sont visibles dans Consulter et dans le détail de `/historique-demandes`. Ils ne comptent pas comme des livraisons dans `/stats-convois`. La barre de progression reflète la part du besoin couverte par les convois et les ajustements.
-
-Les restants peuvent être corrigés à la hausse dans la limite du montant initial moins les convois non annulés. Si les deux restants sont mis à zéro, la demande est terminée manuellement. Si un convoi ou un autre ajustement change le restant pendant la saisie, le bot refuse cette confirmation : repartir de **Modifier une demande** pour ouvrir un formulaire à jour.
-
-Déploiement : appliquer `app/bot-demand-adjustments.sql` du dépôt du site sur une base existante, déployer l’API correspondante, et ajouter le scope `demandes:adjust` au secret du bot. Les nouvelles installations utilisent le schéma complet de la base UPTEP, qui inclut cette table.
-
-## `/solde-terrain` — suivi persistant
-
-Commande sans paramètre, utilisable dans les salons textuels et fils du serveur configuré. **Seul l’ID Discord `1544667516364652659` peut l’exécuter**, indépendamment de `ADMIN_DISCORD_IDS` et des droits chaîne. Les autres utilisateurs peuvent voir la commande mais sont refusés avant toute lecture ou analyse.
-
-Au premier lancement, le bot lit l’historique accessible du salon/fil courant, analyse les rapports avec Luna puis les enregistre via l’API UPTEP. Le suivi est séparé par serveur et salon/fil. Les lancements suivants ne lisent que les messages postérieurs au dernier message enregistré. Les rapports sources, mouvements, avertissements et curseur sont sauvegardés ensemble dans une transaction PostgreSQL ; Codex n’a aucun accès à la base.
-
-Après enregistrement, le bot publie uniquement `Solde : +1 234 cm²` dans le salon. La progression et les erreurs restent éphémères ; le message de progression disparaît après succès. Aucun fichier de synthèse n’est généré. Les fichiers de travail Codex sont supprimés par le lanceur. En cas d’échec de publication, le prochain lancement reprend le solde enregistré avant toute nouvelle analyse. Un nonce Discord stable limite les doubles publications lors des reprises rapprochées ; une coupure prolongée entre publication et accusé API peut toutefois entraîner une répétition du message de solde, sans doubler les mouvements.
-
-L’API nécessite les scopes `terrain:read`, `terrain:write` et `terrain_guild_id` correspondant au serveur du bot. Routes : `GET /terrain/{guild_id}/{channel_id}`, `POST …/lots` et `POST …/publication`. Les lots utilisent l’ID d’interaction comme clé d’idempotence. Le total publié est calculé par PostgreSQL à partir des mouvements enregistrés.
-
-Activer **Message Content Intent** dans le portail développeur Discord → Bot. Le bot doit avoir Voir le salon, Lire l’historique et Envoyer des messages (dans les fils également), y compris l’accès au fil privé concerné. Pas de permission Administrateur nécessaire. La commande vérifie le privilège de contenu avant de lire l’historique via REST ; elle n’ajoute pas de souscription Gateway aux messages.
-
-Les phrases standard du jeu sont désormais extraites et comptées par le code avant l’analyse IA. Chaque occurrence possède une référence `message:position` : trois lignes identiques de 800 cm² restent trois attaques, même à la même minute. Luna enrichit les identités/dates et interprète les passages non standard. Une opération standard omise par Luna reste comptée et son absence d’enrichissement est signalée.
-
-Titres et détails ne doivent pas être additionnés deux fois. L’IA reçoit des règles pour les rapports incomplets, les recopies, les contradictions et les dates. Les références, citations et montants sont revérifiés dans le texte original avant totalisation ; un résultat incohérent est refusé. Pour chaque bloc standard, les détails sont retenus quand leur somme atteint ou dépasse le titre : un titre ancien de 2 044 suivi des attaques de 2 044, 1 600 et 313 donne 3 957, avec avertissement, sans additionner le titre. Si le détail est inférieur au titre, le total du titre est conservé une seule fois avec avertissement. Une recopie intégrale datée du même auteur est dédupliquée ; des lignes identiques dans un rapport ou des messages d’auteurs différents ne sont pas supprimés automatiquement. Les extraits non standard utilisent un numéro d’occurrence explicite et ne peuvent ajouter un titre/détail déjà couvert. L’interprétation IA reste à vérifier dans le détail, en particulier si plusieurs messages se chevauchent. Les pièces jointes/images ne sont pas analysées et sont signalées. La date d’envoi Discord n’est pas assimilée à la date d’attaque.
-
-Limites actuelles : une analyse à la fois, 20 000 messages et 200 000 caractères de données JSON, délai Codex de 8 minutes. Un dépassement refuse le bilan plutôt que tronquer silencieusement la conversation. Les anciennes modifications et suppressions de messages ne sont pas relues automatiquement. Les recopies intégrales datées du même auteur sont aussi dédupliquées entre deux lancements ; les recopies partielles ou reformulées peuvent nécessiter une correction manuelle. Les limites portent sur les nouveaux messages à analyser. Les messages sont envoyés à OpenAI pour l’analyse et consomment les quotas de la connexion Codex configurée.
-
-### Lanceur Codex isolé
-
-`CODEX_MODEL=gpt-6-luna` et `TERRAIN_CODEX_RUNNER=/usr/local/libexec/uptep-terrain-codex` configurent le bot. Le lanceur Python fourni dans `ops/` fonctionne sous le compte système dédié `uptep-codex` (home `/var/lib/uptep-codex`, shell nologin). Son installation et son authentification nécessitent une configuration administrateur explicite ; ne jamais versionner `auth.json`.
-
-- Binaire Codex : `/opt/uptep-codex/codex`, schéma : `/opt/uptep-codex/terrain-schema.json` ; détenus par root, non modifiables par le bot.
-- Lanceur : `/usr/local/libexec/uptep-terrain-codex`, root, mode 755. Seul argument accepté : `gpt-6-luna`.
-- Home, `.codex` et `jobs` du compte dédié : mode 700 ; connexion Codex privée dans `.codex`, mode 600. Le compte ne doit pas avoir accès aux secrets du site/bot.
-- Si approuvée par l’administrateur, règle sudo strictement limitée : `uptep ALL=(uptep-codex) NOPASSWD: /usr/local/libexec/uptep-terrain-codex gpt-6-luna`.
-- Entrée via stdin, jamais via une commande shell interpolée. Environnement filtré, pas de token Discord/API UPTEP transmis. Configuration utilisateur ignorée, shell/apps/navigation/multi-agent désactivés, sandbox lecture seule, session éphémère.
-- Répertoire de tâche temporaire supprimé à la fin, sortie JSON vérifiée. Les logs Codex ne sont ni envoyés à Discord ni conservés par ce lanceur. La connexion persistante reste privée au compte dédié.
-
-Tests : `npm test` couvre les contrôles d’identité/serveur, les réponses éphémères, la pagination, les limites, le calcul, les preuves sources, les doublons de sélection et les erreurs. Ne pas démarrer `src/index.js` pour un test hors ligne : le démarrage normal maintient le tableau public de convois existant.
-
-Les mouvements terrain conservent `member_discord_id` quand le nom du propriétaire du rapport correspond sans ambiguïté aux noms Discord des participants lus. Cet ID est résolu par le bot depuis les métadonnées Discord et non inventé par Luna. En cas d’ambiguïté il reste null ; `terrain_discord_reports.author_id` conserve séparément l’auteur du message source.
-
-## `/livraisons vitesse:7`
-
-Disponible à tous les membres associés à un joueur UPTEP via `chaine_members.iddiscord`, dans tous les salons et fils du serveur configuré. Aucun compte sur le site nécessaire. Le niveau de **Vitesse d’attaque** est obligatoire (0 à 999), utilisé uniquement pour ce calcul et jamais sauvegardé.
-
-La réponse est privée et liste les demandes validées en cours des autres joueurs, avec leurs ressources restantes, la distance arrondie au supérieur et le temps aller estimé. Le tri utilise la distance exacte. Les coordonnées viennent des derniers relevés fzzz ; les coordonnées manquantes sont signalées et placées en dernier. Les pages de huit demandes se parcourent avec Précédent/Suivant, réservés à l’auteur de la commande. Une demande par ligne, même si un destinataire en a plusieurs. Aucun convoi n’est envoyé ou déclaré.
-
-Endpoint : `GET /livraisons?discord_id=…&vitesse=7&page=1`, scope existant `demandes:read`. Une association absente ou ambiguë invite à contacter NoobEnCDI. La formule de trajet est celle du userscript UPTEP : `round(86400 × (1 − exp(−distance / 350)) × 7.375 × 0.9^vitesse)`.
-
-## Annonce des validations
-
-Après validation réussie via le bot, une annonce `@everyone` est envoyée dans `CONVOY_CHANNEL_ID`, avec le demandeur, le numéro de demande et les ressources restantes. Le bot doit avoir la permission « Mentionner @everyone, @here et tous les rôles ». Seule cette annonce autorise la mention everyone ; les autres messages gardent leurs protections de mentions.
-
-Les annonces sont conservées dans le fichier privé `data/state.json`, avec le statut d’envoi par demande. Les échecs sont réessayés lors de l’actualisation du tableau ; un nonce stable protège les reprises rapprochées. Une coupure prolongée entre envoi Discord et sauvegarde locale peut toutefois produire un doublon. Aucune annonce rétroactive pour les demandes déjà validées avant ce déploiement. Les validations effectuées par un autre client API ne déclenchent pas cette annonce.
-
-## MP après déclaration de convoi
-
-Chaque convoi déclaré avec succès via le bot déclenche un MP au `discord_demandeur` de la demande. Il contient le numéro de demande/convoi, l’expéditeur, les quantités et l’arrivée prévue (date Discord dans le fuseau du destinataire, ou « Non renseignée »). Il s’agit d’une déclaration, pas d’une confirmation de réception dans le jeu.
-
-Les MP bloqués ou destinataires inaccessibles sont abandonnés sans message public de secours. Les erreurs temporaires sont réessayées à l’actualisation du tableau. La file privée dans `data/state.json` conserve le statut par convoi pour éviter les répétitions ; aucune notification rétroactive. Comme pour les annonces, une coupure prolongée entre envoi et sauvegarde peut entraîner un doublon malgré le nonce Discord. Aucun changement de schéma SQL nécessaire.
-
-## `/chaine`
-
-Publie dans le salon ou fil courant un embed avec tous les membres présents de l’alliance UPTEP, présentés sur une ligne chacun : **Flooder · Grade · Joueur**, avec un lien **Flooder** : `https://s5.fourmizzz.fr/ennemie.php?Attaquer=ID_JOUEUR&lieu=1`. La commande est disponible aux joueurs associés à Discord, dans tous les salons accessibles du serveur configuré. Le bot doit pouvoir écrire et intégrer des liens. Aucune mention n’est déclenchée ; les erreurs restent privées.
-
-Le classement suit celui du site : grades prioritaires, Passeurs du plus grand numéro au plus petit, autres grades croissants, puis membres sans grade. Les membres sortis de l’alliance ne sont pas inclus. La liste tient dans un seul embed tant que sa description ne dépasse pas 4 000 caractères. Elle est découpée uniquement au-delà de ce seuil, sans limite fixe de joueurs par bloc. Chaque exécution publie une nouvelle liste ; les anciens messages ne sont pas actualisés automatiquement. Les liens ouvrent la page d’attaque sans lancer eux-mêmes une attaque ni vérifier la portée.
-
-API : `GET /chaine?discord_id=…`, scope existant `membres:read`. Aucun changement de schéma de base.
-
-## `/aide`
-
-Affiche un guide privé des sept commandes slash, des options usuelles et des droits requis. Présente également les boutons du tableau, les notifications et la procédure d’association auprès de NoobEnCDI. Disponible dans tous les salons et fils accessibles du serveur configuré, sans compte joueur associé ni appel API. Aucun message public n’est envoyé.
-
-## Suivi des floods
-
-Configurer `FLOOD_CHANNEL_ID` dans `.env` puis redémarrer. Le tableau public est retrouvé par son ID sauvegardé ou son marqueur `UPTEP_FLOODS_V1` et n’est pas recréé à chaque démarrage. Le salon doit appartenir au serveur configuré ; permissions nécessaires : voir, écrire, lire l’historique et intégrer des liens. Un défaut d’accès est réessayé chaque minute sans interrompre les convois.
-
-- **Déclarer des floods** : coller jusqu’à 4 000 caractères / 20 attaques dans une modale. Le bot reconnaît le texte brut ou les liens Markdown, les durées en jours/heures/minutes/secondes ou j/h/m/s, les troupes facultatives et l’heure facultative. Terrain de chasse, Dôme et Loge sont reconnus. Les lignes peuvent commencer par un tiret ou non. Le format court `Vous allez attaquer Hardware(UPTEP) dans 8 heures 32 minutes 28 secondes` est accepté : si le lieu manque, Terrain de chasse est utilisé avec un avertissement à vérifier avant confirmation.
-- **Tous les floods en cours** : liste privée paginée par arrivée, cinq attaques par page.
-- **Floods vers moi** : même liste, filtrée sur le joueur associé à l’ID Discord.
-
-L’expéditeur doit être associé à un joueur UPTEP. L’API résout chaque pseudo exact (casse ignorée) dans les joueurs présents de s5 puis recherche son ID Discord dans la chaîne. Les cibles inconnues ou sans association unique sont signalées et peuvent être enregistrées sans notification. La confirmation privée affiche les informations reconnues et les avertissements ; aucun flood n’est créé avant confirmation. Une attaque incomplète bloque tout le lot. Des attaques identiques restent distinctes, mais un retry d’une même confirmation n’ajoute rien.
-
-L’arrivée est calculée au moment de l’envoi de la modale à partir de la durée restante. Le temps de confirmation ne la décale pas. L’heure copiée est comparée à l’heure de Paris (tolérance de deux minutes), un écart est signalé et la durée reste prioritaire. Coller un relevé récent : un texte ancien peut donner une arrivée fausse. Un formulaire expire après une heure ; une arrivée déjà passée impose de recopier le relevé. Les troupes sont conservées sous forme de texte facultatif, pas converties en terrain gagné.
-
-Après confirmation, le bot envoie un MP par flood aux destinataires identifiés. MP bloqués : abandon silencieux, sans message public. Erreurs temporaires : nouvelles tentatives chaque minute. Les arrivées passées disparaissent des listes, mais restent archivées en base. Les files de MP persistent dans `data/state.json` ; conserver ce fichier. Comme pour les convois, le nonce réduit les doublons rapprochés sans garantir une livraison exactement une fois après une longue coupure.
-
-API : `POST /floods/preview`, `POST /floods`, `GET /floods`. Scopes : `floods:write` et `floods:read`. Tables : `bot_flood_batches` et `floods`, migration `app/bot-floods.sql` dans le dépôt du site, intégrée à `database/uptep/schema.sql`. Les droits phpPgAdmin `fzzz_admin` sont inclus. Aucun accès direct du bot à PostgreSQL. `/aide` présente les trois boutons.
-
-Les messages privés des floods sont nettoyés : passage à une autre page ou confirmation supprime le message éphémère précédent ; succès et abandon disparaissent après trois secondes. Les listes, confirmations en attente et erreurs expirent après cinq minutes. Le tableau public est conservé. Ces minuteries ne survivent pas au redémarrage du bot.
-
-Les annonces de validation sont supprimées dès que leur demande est terminée (automatiquement ou manuellement) ou annulée. Le contrôle a lieu à l’actualisation du tableau, environ chaque minute, via `GET /demandes/statuts`. Il vérifie un état fermé explicite, sans déduire la clôture d’un résultat manquant. Les annonces anciennes sont récupérables avec `ValidationNotifications.recoverAnnouncements()` puis `cleanClosed()` ; seuls les messages du bot portant le texte et le titre exacts des annonces sont concernés.
-
-### Connexion privée au site (test)
-
-`/connexion` est réservée à l'ID Discord `1544667516364652659` (comme `/solde-terrain`) et au serveur configuré. Le bot transmet l'identité de l'interaction à `POST /api/bot/v1/connexion`, puis répond uniquement en éphémère avec un lien personnel. Aucun paramètre ne permet de choisir un autre compte. La commande peut être visible aux autres membres, mais leur utilisation est refusée avant tout appel API.
-
-Ce parcours est une connexion par lien privé, pas OAuth2. Le lien est un secret temporaire : il expire en 120 secondes, ne fonctionne qu'une fois et chaque nouvelle demande remplace le précédent. Ne pas le partager. Le site affiche le compte et demande confirmation avant d'ouvrir la session. Les refus et erreurs ne doivent jamais journaliser le lien ou le secret API.
-
-Si ton ID Discord est déjà associé par un administrateur à un joueur mais qu’aucun compte UPTEP n’existe, le lien propose de créer un compte membre à la confirmation. Un compte existant non lié doit être associé explicitement par un administrateur ; aucun compte désactivé n’est réactivé.
-
-La simulation `/connexion-test` a été retirée. `/connexion` reste réservée à NoobEnCDI. La création d’un compte utilise le pseudo du joueur comme identifiant et nom affiché, puis le site propose de définir un mot de passe. Les migrations et tests isolés du dépôt du site conservent la couverture des inscriptions.
+Licence MIT.
