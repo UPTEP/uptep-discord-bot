@@ -93,3 +93,29 @@ test('Ajustement du restant : sélection autorisée, modal préremplie et confir
  assert.throws(()=>ui.check('adjust',demand,{player_id:'2',is_chaine:false}));
  }finally{fs.rmSync(dir,{recursive:true});}
 });
+
+
+test('Plusieurs convois collés : erreur explicite, jamais un faux destinataire',()=>{
+ const a='Vous allez livrer 0 nourritures et 20 000 matériaux à Peanut dans 44m 56s - Retour le 15 oct. à 16h28';
+ const b='Vous allez livrer 0 nourritures et 20 000 matériaux à Peanut dans 3H 6m 9s - Retour le 15 oct. à 18h49 - Annuler';
+ const c='Vous allez livrer 0 nourritures et 10 000 matériaux à Peanut dans 2H';
+ for(const separator of ['\n','\r\n',' - ',' ','\t']){
+  assert.throws(()=>convoyReport([a,b,c].join(separator),'Peanut'),/Plusieurs convois.*un seul convoi/);
+  assert.throws(()=>convoyReport([a,b.replaceAll('Peanut','Autre')].join(separator),'Peanut'),/Plusieurs convois/);
+ }
+ const now=new Date('2026-10-15T12:00:00Z');
+ assert.deepEqual(convoyReport(a,'Peanut',now),{nbpomme:'0',nbmateriaux:'20000',date_arrivee:'2026-10-15T12:44:56Z'});
+ assert.throws(()=>convoyReport('Vous allez livrer 0 et 100 à Peanut dans bientôt puis dans 2h','Peanut'),/Rapport non reconnu/);
+});
+
+test('Convois vers des joueurs différents : aucune confirmation ni écriture API préparée',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'uptep-multiple-convoys-'));
+ try{
+  const state=new State(dir),sid=state.create('123','deliver',{demand:{id:'8',pseudo_demandeur:'Peanut'}});let payload;
+  const ui=new UI({state,api:{member:async()=>({player_id:'1'}),request:async()=>assert.fail('No write expected')}});
+  ui.stage=async()=>assert.fail('No confirmation expected');
+  const report='Vous allez livrer 0 et 20 000 à Peanut dans 44m 56s\nVous allez livrer 0 et 10 000 à Autre dans 3h';
+  await ui.handle({customId:'uptep:deliverForm:'+sid,user:{id:'123'},deferred:true,deferReply:async()=>{},fields:{fields:new Map([['report',{}]]),getTextInputValue:k=>k==='report'?report:''},editReply:async p=>{payload=p;}});
+  assert.match(payload.content,/Convoi 2.*Autre/);assert.deepEqual(payload.components,[]);
+ }finally{fs.rmSync(dir,{recursive:true});}
+});

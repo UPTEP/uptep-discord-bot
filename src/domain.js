@@ -32,10 +32,24 @@ export const escape=text=>String(text??'').replace(/[\\*_`~|<>\[\]()]/g,'\\$&').
 export function short(text,size=90){return String(text).length>size?String(text).slice(0,size-1)+'…':String(text);}
 export function convoyReport(raw,recipient,now=new Date()){
  const text=String(raw).normalize('NFC').replace(/\*\*/g,'').replace(/\s+/g,' ').trim();
- const m=/^(?:-\s*)?Vous allez livrer (\d[\d ]*)(?: nourritures?)? et (\d[\d ]*)(?: mat[eé]riaux?)? [àa] (.+?) dans ((?:\d+\s*[jHhms]\s*)+)(?:\s*-\s*Retour le [^-]+)?(?:\s*-\s*Annuler)?(?:\s*-)?\s*$/iu.exec(text);
+ if((text.match(/Vous allez livrer\b/giu)||[]).length>1)throw new UserError('Plusieurs convois ont été collés. Déclare un seul convoi à la fois : copie uniquement sa ligne « Vous allez livrer … », puis recommence pour les autres envois.');
+ const m=/^(?:-\s*)?Vous allez livrer (\d[\d ]*)(?: nourritures?)? et (\d[\d ]*)(?: mat[eé]riaux?)? [àa] ((?:(?! dans ).)+?) dans ((?:\d+\s*[jHhms]\s*)+)(?:\s*-\s*Retour le [^-]+)?(?:\s*-\s*Annuler)?(?:\s*-)?\s*$/iu.exec(text);
  if(!m)throw new UserError('Rapport non reconnu. Colle une seule ligne « Vous allez livrer … dans … », avec ou sans le retour.');
  const target=m[3].trim();if(target.toLocaleLowerCase('fr')!==String(recipient).normalize('NFC').trim().toLocaleLowerCase('fr'))throw new UserError('Ce rapport est destiné à '+target+', mais la demande choisie concerne '+recipient+'. Choisis la bonne demande.');
  return {...amounts(m[1],m[2]),date_arrivee:arrival(m[4],now)};
+}
+// Preserve each occurrence: identical reports may represent distinct convoys.
+export function convoyReports(raw,recipient,now=new Date()){
+ const text=String(raw).normalize('NFC').replace(/\*\*/g,'').replace(/\s+/g,' ').trim();
+ if(text.length>4000)throw new UserError('Colle au maximum 4 000 caractères de rapports.');
+ const starts=[...text.matchAll(/Vous allez livrer\b/giu)];
+ if(!starts.length)return [convoyReport(text,recipient,now)];
+ if(starts.length>20)throw new UserError('Déclare au maximum 20 convois à la fois.');
+ if(!/^(?:-\s*)?$/.test(text.slice(0,starts[0].index)))throw new UserError('Colle uniquement les lignes « Vous allez livrer … ».');
+ return starts.map((start,index)=>{
+  try{return convoyReport(text.slice(start.index,starts[index+1]?.index??text.length).trim(),recipient,now);}
+  catch(e){if(e instanceof UserError)throw new UserError('Convoi '+(index+1)+' : '+e.message);throw e;}
+ });
 }
 export function progress(d){
  const total=BigInt(d.nbpomme_original??0)+BigInt(d.nbmateriaux_original??0);

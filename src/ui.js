@@ -1,5 +1,5 @@
 import {ActionRowBuilder,ButtonBuilder,ButtonStyle,ModalBuilder,TextInputBuilder,TextInputStyle,StringSelectMenuBuilder,MessageFlags,EmbedBuilder} from 'discord.js';
-import {UserError,quantity,amounts,dueDate,arrival,level,cleanText,fmt,escape,short,convoyReport,progress,frenchDate} from './domain.js';
+import {UserError,quantity,amounts,dueDate,arrival,level,cleanText,fmt,escape,short,convoyReports,progress,frenchDate} from './domain.js';
 const row=(...components)=>new ActionRowBuilder().addComponents(components);
 const button=(id,label,style=ButtonStyle.Secondary)=>new ButtonBuilder().setCustomId('uptep:'+id).setLabel(label).setStyle(style);
 const field=(id,label,required=true,placeholder='')=>row(new TextInputBuilder().setCustomId(id).setLabel(label).setStyle(TextInputStyle.Short).setRequired(required).setMaxLength(160).setPlaceholder(placeholder));
@@ -40,7 +40,7 @@ export class UI {
     }
     if(s.type==='deliver'){
      const sid=this.state.create(i.user.id,'deliver',{demand});
-     return await i.showModal(new ModalBuilder().setCustomId('uptep:deliverForm:'+sid).setTitle(short('Convoi #'+demand.id+' · '+demand.pseudo_demandeur,45)).addComponents(row(new TextInputBuilder().setCustomId('report').setLabel('Rapport du jeu (ou saisie manuelle dessous)').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(1500).setPlaceholder('Vous allez livrer …')),field('food','Pommes envoyées',false),field('wood','Matériaux envoyés',false),field('arrival','Arrivée (facultatif)',false,'Durée : 2h 30m')));
+     return await i.showModal(new ModalBuilder().setCustomId('uptep:deliverForm:'+sid).setTitle(short('Convoi #'+demand.id+' · '+demand.pseudo_demandeur,45)).addComponents(row(new TextInputBuilder().setCustomId('report').setLabel('Rapport(s) du jeu · jusqu’à 20 convois').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(4000).setPlaceholder('Vous allez livrer …')),field('food','Pommes envoyées',false),field('wood','Matériaux envoyés',false),field('arrival','Arrivée (facultatif)',false,'Durée : 2h 30m')));
     }
     await i.deferReply({flags:MessageFlags.Ephemeral});
     if(s.type==='cancelConvoy'){
@@ -86,7 +86,9 @@ Saisis le nouveau total encore nécessaire, pas la quantité produite. Les convo
    if(action==='requestForm'||action==='deliverForm'){
     const s=this.state.get(id,i.user.id);if(s.type!==(action==='requestForm'?'request':'deliver'))throw new UserError('Formulaire invalide.');
     await this.api.member(i.user.id);
-    const get=k=>i.fields.getTextInputValue(k);const report=action==='deliverForm'&&i.fields.fields?.has('report')?get('report').trim():'';const parsed=report?convoyReport(report,s.data.demand.pseudo_demandeur):null;if(parsed&&(get('food').trim()||get('wood').trim()||get('arrival').trim()))throw new UserError('Colle uniquement le rapport ou remplis les champs manuels, pour éviter des quantités contradictoires.');const quantities=parsed?{nbpomme:parsed.nbpomme,nbmateriaux:parsed.nbmateriaux}:amounts(get('food'),get('wood'));let body={discord_id:i.user.id,...quantities},path,summary;
+    const get=k=>i.fields.getTextInputValue(k);const report=action==='deliverForm'&&i.fields.fields?.has('report')?get('report').trim():'';const parsedReports=report?convoyReports(report,s.data.demand.pseudo_demandeur):null;if(parsedReports&&(get('food').trim()||get('wood').trim()||get('arrival').trim()))throw new UserError('Colle uniquement le rapport ou remplis les champs manuels, pour éviter des quantités contradictoires.');
+    if(parsedReports?.length>1)return await this.stageConvoys(i,s.data.demand,parsedReports);
+    const parsed=parsedReports?.[0]??null;const quantities=parsed?{nbpomme:parsed.nbpomme,nbmateriaux:parsed.nbmateriaux}:amounts(get('food'),get('wood'));let body={discord_id:i.user.id,...quantities},path,summary;
     if(action==='requestForm'){
      body={...body,objet:cleanText(get('objet')),niveau:level(get('niveau').trim()),date_souhaitee:dueDate(get('date'))};path='/demandes';summary=`Demander **${escape(body.objet)} niveau ${body.niveau}**`;
     }else{body.date_arrivee=parsed?parsed.date_arrivee:arrival(get('arrival'));body.date_convoi=new Date().toISOString().replace(/\.\d{3}Z$/,'Z');path='/demandes/'+s.data.demand.id+'/convois';summary=`Déclarer un convoi pour **${escape(s.data.demand.pseudo_demandeur)}**, demande #${s.data.demand.id}`;}
@@ -95,6 +97,7 @@ Saisis le nouveau total encore nécessaire, pas la quantité produite. Les convo
     if(body.date_arrivee)summary+='\nArrivée : <t:'+Math.floor(new Date(body.date_arrivee).getTime()/1000)+':f>';
     return await this.stage(i,s.type,{path,body,summary,...(action==='deliverForm'?{demand:s.data.demand}:{})});
    }
+   if(action==='applyConvoys')return await this.applyConvoys(i,id);
    if(action==='apply'){
     const s=this.state.get(id,i.user.id);if(s.type!=='job')throw new UserError('Confirmation invalide.');
     if(s.data.superseded)throw new UserError('Cette confirmation a été remplacée par le formulaire de modification.');
@@ -125,6 +128,43 @@ Saisis le nouveau total encore nécessaire, pas la quantité produite. Les convo
  error(e){if(e instanceof UserError)return e.message;console.error('Erreur interaction :',e.name);return 'Une erreur est survenue. Réessaie depuis le tableau.';}
  check(type,d,m){if(type==='adjust'&&!m.is_chaine&&m.player_id!==d.iddemandeur)throw new UserError('Tu peux uniquement ajuster tes propres demandes.');if(type==='validate'&&!m.is_chaine)throw new UserError('Un droit administrateur du bot ou le droit chaîne est nécessaire.');if(type==='cancel'&&!m.is_chaine&&m.player_id!==d.iddemandeur)throw new UserError('Tu peux uniquement annuler tes demandes.');}
  async stage(i,type,data){const sid=this.state.create(i.user.id,'job',{});data.body.commande_id='discord:'+sid;this.state.set(sid,data);return i.editReply({content:data.summary+'\n\nConfirme pour enregistrer cette action.',components:[row(button('apply:'+sid,'Confirmer',['cancel','cancelConvoy'].includes(type)?ButtonStyle.Danger:ButtonStyle.Success),...(type==='deliver'?[button('edit:'+sid,'Vérifier / modifier les champs')]:[]))],allowedMentions:{parse:[]}});}
+ async stageConvoys(i,demand,reports){
+  const totals=reports.reduce((sum,r)=>({food:sum.food+BigInt(r.nbpomme),wood:sum.wood+BigInt(r.nbmateriaux)}),{food:0n,wood:0n});
+  if((demand.nbpomme_restant!==undefined&&totals.food>BigInt(demand.nbpomme_restant))||(demand.nbmateriaux_restant!==undefined&&totals.wood>BigInt(demand.nbmateriaux_restant)))throw new UserError('Le total des convois dépasse le restant de cette demande. Vérifie les lignes collées et la demande choisie. Aucun convoi enregistré.');
+  const sid=this.state.create(i.user.id,'convoyBatch',{}),date=new Date().toISOString().replace(/\.\d{3}Z$/,'Z');
+  const items=reports.map((r,index)=>({body:{discord_id:i.user.id,...r,date_convoi:date,commande_id:'discord:'+sid+':'+index}}));
+  this.state.set(sid,{path:'/demandes/'+demand.id+'/convois',items});
+  const lines=reports.map((r,index)=>`${index+1}. 🍎 ${fmt(r.nbpomme)} · 🪵 ${fmt(r.nbmateriaux)} · <t:${Math.floor(new Date(r.date_arrivee).getTime()/1000)}:f>`);
+  return i.editReply({content:`**${reports.length} convois pour ${escape(short(demand.pseudo_demandeur,80))} · demande #${demand.id}**\nTotal : 🍎 ${fmt(totals.food)} · 🪵 ${fmt(totals.wood)}\nVérifie chaque envoi avant de confirmer. Les lignes identiques sont conservées comme des convois distincts.`,embeds:[new EmbedBuilder().setColor(0x657645).setTitle('Quantités et arrivée de chaque convoi').setDescription(lines.join('\n'))],components:[row(button('applyConvoys:'+sid,'Confirmer les convois',ButtonStyle.Success))],allowedMentions:{parse:[]}});
+ }
+ async applyConvoys(i,id){
+  const session=this.state.get(id,i.user.id);if(session.type!=='convoyBatch')throw new UserError('Confirmation invalide.');
+  if(this.busy.has(id))throw new UserError('Cette opération est déjà en cours.');
+  const data=session.data;
+  if(data.result)return i.editReply({content:data.result,embeds:[],components:[],allowedMentions:{parse:[]}});
+  this.busy.add(id);
+  try{
+   for(const item of data.items){
+    if(!item.result){
+     // Stable body and command ID survive a lost response or bot restart.
+     item.result=await this.api.request(data.path,{body:item.body});
+     this.state.set(id,data);
+    }
+    // Queue is idempotent by convoy ID, including crash recovery.
+    this.convoyNotifications?.enqueue(item.result);
+   }
+   data.result=`✅ ${data.items.length} convois enregistrés sur UPTEP · demande #${data.items[0].result.demande.id}.`;
+   this.state.set(id,data);
+   await i.editReply({content:data.result,embeds:[],components:[],allowedMentions:{parse:[]}});
+  }catch(e){
+   const done=data.items.filter(item=>item.result).length;
+   await i.editReply({content:`${done}/${data.items.length} convois confirmés par UPTEP.\n${this.error(e)}\nUtilise ce bouton pour reprendre : les convois déjà enregistrés ne seront pas ajoutés une seconde fois.`,embeds:[],components:[row(button('applyConvoys:'+id,'Reprendre les convois restants',ButtonStyle.Primary))],allowedMentions:{parse:[]}});
+  }finally{
+   this.busy.delete(id);
+   this.convoyNotifications?.flush().catch(()=>console.error('MP convoi différé.'));
+   this.snapshot.invalidate();this.refresh().catch(()=>console.error('Actualisation du tableau différée.'));
+  }
+ }
  selection(id,s,page){
   const pages=Math.ceil(s.data.rows.length/25);page=Math.max(0,Math.min(pages-1,Number.isInteger(page)?page:0));
   const select=new StringSelectMenuBuilder().setCustomId('uptep:pick:'+id).setPlaceholder(s.type==='cancelConvoy'?'Choisir un convoi':'Choisir une demande').addOptions(s.data.rows.slice(page*25,(page+1)*25).map(d=>s.type==='cancelConvoy'?{label:short(`Convoi #${d.id} · ${d.pseudo_envoyeur} → ${d.pseudo_demandeur}`,100),value:d.id,description:short(`Demande #${d.iddemande} · ${fmt(d.nbpomme)} pommes · ${fmt(d.nbmateriaux)} matériaux · ${d.date_convoi}`,100)}:({label:short(`#${d.id} · ${d.pseudo_demandeur} · ${d.objet||'Ressources'}`,100),value:d.id,description:short(`${d.fini?'Terminée':d.valide?'En cours':'À valider'} · Pommes ${fmt(d.nbpomme_restant)} · Matériaux ${fmt(d.nbmateriaux_restant)}`,100)})));

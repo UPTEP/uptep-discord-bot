@@ -132,3 +132,10 @@ Les tests locaux couvrent les confirmations et retries, les permissions, les rap
 Une analyse réelle se vérifie en lançant `/solde-terrain` depuis le compte Discord autorisé. Les tests automatisés ne lancent pas de requête Codex facturable.
 
 Licence MIT.
+
+
+### Import de plusieurs convois
+
+Le formulaire « Déclarer un convoi » accepte jusqu’à 20 lignes « Vous allez livrer … » (4 000 caractères), avec retours à la ligne ou collage compact. Tous les destinataires doivent correspondre à la demande sélectionnée. Chaque occurrence est conservée, même identique ; chaque durée produit son heure d’arrivée, figée lors de l’analyse. Le récapitulatif privé affiche les quantités et arrivées individuelles, ainsi que les totaux exacts. Le total est vérifié contre le restant connu avant confirmation ; l’API revérifie les droits et le restant réel à chaque écriture.
+
+La confirmation groupée enregistre les convois successivement via l’API existante : ce n’est pas une transaction atomique du lot. Les corps et identifiants de commande par ligne sont persistés avant toute écriture. Après une erreur ou un redémarrage, le bouton de reprise conserve les succès et réutilise la même commande pour les réponses incertaines. Le compteur indique uniquement les enregistrements confirmés par l’API. Les notifications existantes restent dédupliquées par ID de convoi. Les entrées mixtes (rapports et champs manuels), les lignes invalides et les autres destinataires sont refusés avant confirmation. Test de reprise, réponse perdue, concurrence et limites Discord : `test/convoy-batch.test.js`.
