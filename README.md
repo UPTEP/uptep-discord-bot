@@ -16,7 +16,7 @@ Bot de suivi des demandes de ressources, convois et floods de l’alliance UPTEP
 | `/suspendre-demande demande:123` | `ADMIN_DISCORD_IDS` | Retour en attente sans supprimer les convois existants. |
 | `/historique-demandes`, `/historique-convois`, `/stats-convois`, `/recap-demandes` | `ADMIN_DISCORD_IDS` | Rapports privés. |
 | Boutons de suivi des floods | Joueur UPTEP associé à Discord | Déclarations et listes privées, avec notifications aux cibles identifiées. |
-| `/connexion` | NoobEnCDI | Lien privé à usage unique vers le site. |
+| `/connexion` | Tous les membres du serveur | Lien privé à usage unique vers le site. |
 | `/solde-terrain` | NoobEnCDI, via le service protégé | Analyse incrémentale et publication du solde de terrain. |
 
 L’association Discord doit être unique dans `chaine_members` et correspondre à un joueur actuellement présent dans UPTEP. La liste `ADMIN_DISCORD_IDS` ne contourne pas cette condition. Les droits sont revérifiés côté API ; la liste est relue sans redémarrage.

@@ -1,12 +1,11 @@
 import {MessageFlags,SlashCommandBuilder} from 'discord.js';
-import {TERRAIN_USER} from './terrain.js';
-export const loginCommand=new SlashCommandBuilder().setName('connexion').setDescription('Connexion privée à UPTEP (test réservé à NoobEnCDI)').toJSON();
+export const loginCommand=new SlashCommandBuilder().setName('connexion').setDescription('Recevoir mon lien privé de connexion à UPTEP').toJSON();
 export class SiteLogin {
- constructor({api,guildId}){Object.assign(this,{api,guildId});this.busy=false;}
+ constructor({api,guildId}){Object.assign(this,{api,guildId});this.busy=new Set();}
  async handle(i){
-  if(i.user.id!==TERRAIN_USER||i.guildId!==this.guildId)return i.reply({content:'Commande de test réservée à NoobEnCDI sur le serveur UPTEP.',flags:MessageFlags.Ephemeral});
-  if(this.busy)return i.reply({content:'Création du lien en cours. Patiente un instant.',flags:MessageFlags.Ephemeral});
-  this.busy=true;
+  if(i.guildId!==this.guildId)return i.reply({content:'Commande disponible uniquement sur le serveur UPTEP.',flags:MessageFlags.Ephemeral});
+  if(this.busy.has(i.user.id))return i.reply({content:'Création du lien en cours. Patiente un instant.',flags:MessageFlags.Ephemeral});
+  this.busy.add(i.user.id);
   try{
    await i.deferReply({flags:MessageFlags.Ephemeral});
    const result=await this.api.request('/connexion',{body:{discord_id:i.user.id,guild_id:i.guildId}});
@@ -16,6 +15,6 @@ export class SiteLogin {
   }catch{
    // Never echo an API response/error containing a login token.
    if(i.deferred)await i.editReply({content:'Connexion indisponible : vérifie que ton compte UPTEP est actif et associé à ton ID Discord. Si tu as demandé plusieurs liens, patiente avant de réessayer.',allowedMentions:{parse:[]}});
-  }finally{this.busy=false;}
+  }finally{this.busy.delete(i.user.id);}
  }
 }

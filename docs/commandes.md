@@ -189,10 +189,10 @@ Les annonces de validation sont supprimées dès que leur demande est terminée 
 
 ## Connexion privée au site
 
-`/connexion` est réservée à l'ID Discord `1544667516364652659` (comme `/solde-terrain`) et au serveur configuré. Le bot transmet l'identité de l'interaction à `POST /api/bot/v1/connexion`, puis répond uniquement en éphémère avec un lien personnel. Aucun paramètre ne permet de choisir un autre compte. La commande peut être visible aux autres membres, mais leur utilisation est refusée avant tout appel API.
+`/connexion` est accessible à tous les membres du serveur configuré. Le bot transmet l'identité de l'interaction à `POST /api/bot/v1/connexion`, puis répond uniquement en éphémère avec un lien personnel. Aucun paramètre ne permet de choisir un autre compte. Les messages privés et les autres serveurs sont refusés. La connexion nécessite une association Discord/joueur UPTEP unique, définie par un administrateur. Plusieurs membres peuvent demander leur lien simultanément.
 
 Ce parcours est une connexion par lien privé, pas OAuth2. Le lien est un secret temporaire : il expire en 120 secondes, ne fonctionne qu'une fois et chaque nouvelle demande remplace le précédent. Ne pas le partager. Le site affiche le compte et demande confirmation avant d'ouvrir la session. Les refus et erreurs ne doivent jamais journaliser le lien ou le secret API.
 
 Si ton ID Discord est déjà associé par un administrateur à un joueur mais qu’aucun compte UPTEP n’existe, le lien propose de créer un compte membre à la confirmation. Un compte existant non lié doit être associé explicitement par un administrateur ; aucun compte désactivé n’est réactivé.
 
-La simulation `/connexion-test` a été retirée. `/connexion` reste réservée à NoobEnCDI. La création d’un compte utilise le pseudo du joueur comme identifiant et nom affiché, puis le site propose de définir un mot de passe. Les migrations et tests isolés du dépôt du site conservent la couverture des inscriptions.
+La simulation `/connexion-test` a été retirée. `/connexion` est ouverte à tous les membres du serveur. La création d’un compte utilise le pseudo du joueur comme identifiant et nom affiché, puis le site propose de définir un mot de passe. Les migrations et tests isolés du dépôt du site conservent la couverture des inscriptions.
