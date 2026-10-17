@@ -9,3 +9,9 @@ test('web events are saved before ack and retried when save fails',async()=>{
  await assert.rejects(receiveWebEvents({api,notifications,convoyNotifications}));assert.deepEqual(calls,['validation:8','ack:1']);
  calls.length=0;fail=false;await receiveWebEvents({api,notifications,convoyNotifications});assert.deepEqual(calls,['validation:8','ack:1','convoi:9','ack:2']);
 });
+test('flood web events are persisted before acknowledgment and replay uses the durable queue',async()=>{
+ const calls=[];let fail=true;const api={request:async(path,options)=>{if(!options)return {events:[{id:'3',kind:'flood',payload:{floods:[{id:'42'}]}}]};calls.push('ack');return {ok:true};}};
+ const floods={enqueue:rows=>{if(fail)throw Error('disk');calls.push(rows[0].id);}};
+ await assert.rejects(receiveWebEvents({api,floods}));assert.deepEqual(calls,[]);
+ fail=false;await receiveWebEvents({api,floods});assert.deepEqual(calls,['42','ack']);
+});

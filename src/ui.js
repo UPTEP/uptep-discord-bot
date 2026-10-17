@@ -166,8 +166,9 @@ Saisis le nouveau total encore nécessaire, pas la quantité produite. Les convo
   }
  }
  selection(id,s,page){
-  const pages=Math.ceil(s.data.rows.length/25);page=Math.max(0,Math.min(pages-1,Number.isInteger(page)?page:0));
-  const select=new StringSelectMenuBuilder().setCustomId('uptep:pick:'+id).setPlaceholder(s.type==='cancelConvoy'?'Choisir un convoi':'Choisir une demande').addOptions(s.data.rows.slice(page*25,(page+1)*25).map(d=>s.type==='cancelConvoy'?{label:short(`Convoi #${d.id} · ${d.pseudo_envoyeur} → ${d.pseudo_demandeur}`,100),value:d.id,description:short(`Demande #${d.iddemande} · ${fmt(d.nbpomme)} pommes · ${fmt(d.nbmateriaux)} matériaux · ${d.date_convoi}`,100)}:({label:short(`#${d.id} · ${d.pseudo_demandeur} · ${d.objet||'Ressources'}`,100),value:d.id,description:short(`${d.fini?'Terminée':d.valide?'En cours':'À valider'} · Pommes ${fmt(d.nbpomme_restant)} · Matériaux ${fmt(d.nbmateriaux_restant)}`,100)})));
+  const rows=[...new Map(s.data.rows.map(d=>[String(d.id),d])).values()];
+  const pages=Math.ceil(rows.length/25);page=Math.max(0,Math.min(pages-1,Number.isInteger(page)?page:0));
+  const select=new StringSelectMenuBuilder().setCustomId('uptep:pick:'+id).setPlaceholder(s.type==='cancelConvoy'?'Choisir un convoi':'Choisir une demande').addOptions(rows.slice(page*25,(page+1)*25).map(d=>s.type==='cancelConvoy'?{label:short(`Convoi #${d.id} · ${d.pseudo_envoyeur} → ${d.pseudo_demandeur}`,100),value:d.id,description:short(`Demande #${d.iddemande} · ${fmt(d.nbpomme)} pommes · ${fmt(d.nbmateriaux)} matériaux · ${d.date_convoi}`,100)}:({label:short(`#${d.id} · ${d.pseudo_demandeur} · ${d.objet||'Ressources'}`,100),value:d.id,description:short(`${d.fini?'Terminée':d.valide?'En cours':'À valider'} · Pommes ${fmt(d.nbpomme_restant)} · Matériaux ${fmt(d.nbmateriaux_restant)}`,100)})));
   const components=[row(select)];if(pages>1)components.push(row(button(`page:${id}:${page-1}`,'Précédent').setDisabled(page===0),button(`page:${id}:${page+1}`,'Suivant').setDisabled(page===pages-1)));
   return {content:`Choisis ${s.type==='cancelConvoy'?'un convoi':'une demande'} · page ${page+1}/${pages}`,components,allowedMentions:{parse:[]}};
  }

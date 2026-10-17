@@ -62,3 +62,9 @@ test('completed flood removes private source then success after 3 seconds, never
  await i.editReply('✅ 2 floods enregistrés.');assert.deepEqual(deleted,['old']);assert.equal(timers[0].ms,3000);await timers[0].fn();assert.deepEqual(deleted,['old','current']);restore();
  deleted.length=0;i.message.flags.has=()=>false;const undo=floodReplyCleanup(i,(fn,ms)=>({unref(){}}));await i.editReply({embeds:[{}]});assert.deepEqual(deleted,[]);undo();
 });
+
+test('arrival tomorrow is separated from troops, including accents',()=>{
+ const r=parseFloods('Vous allez attaquer Khan(UPTEP) (Terrain de chasse) dans 4 heures 5 minutes 58 secondes - Annuler\nTroupes en attaques : 7 549 Jeunes Soldates Naines, 9 Naines d’Elites.\nArrivée demain à 01h18',new Date('2026-10-16T19:12:02Z'));
+ assert.equal(r.floods[0].troops,'7 549 Jeunes Soldates Naines, 9 Naines d’Elites.');
+ assert.equal(r.floods[0].arrival_at,'2026-10-16T23:18:00Z');
+});
