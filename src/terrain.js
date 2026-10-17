@@ -102,15 +102,15 @@ export class Terrain {
    const base='/terrain/'+i.guildId+'/'+i.channelId;
    const state=await this.api.request(base+'?discord_id='+TERRAIN_USER);
    const publish=async saved=>{
-    const posted=await channel.send({content:terrainBalanceText(saved.totals),allowedMentions:{parse:[]},nonce:saved.batch_id,enforceNonce:true});
+    const posted=await channel.send({content:terrainBalanceText(saved.totals)+'\nExtraction assistée par IA OpenAI · résultat à vérifier.\nhttps://uptep.top/confidentialite.html#ia',allowedMentions:{parse:[]},nonce:saved.batch_id,enforceNonce:true});
     await this.api.request(base+'/publication',{body:{discord_id:TERRAIN_USER,batch_id:saved.batch_id,published_message_id:posted.id}});
    };
    if(state.pending){await publish(state.pending);await i.deleteReply();return;}
-   await i.editReply({content:state.last_message_id==='0'?'Initialisation : lecture de la conversation…':'Lecture des nouveaux messages…'});
+   await i.editReply({content:'Analyse assistée par IA OpenAI : les messages du salon, leurs auteurs et dates peuvent être transmis à OpenAI pour extraire les mouvements. Informations et droits : https://uptep.top/confidentialite.html#ia\n'+(state.last_message_id==='0'?'Initialisation : lecture de la conversation…':'Lecture des nouveaux messages…')});
    const scan=await this.collect(channel,{after:state.last_message_id,before:i.id});
    let result={movements:[],warnings:[]};
    if(scan.messages.length){
-    await i.editReply({content:`${scan.scanned} nouveaux messages lus. Analyse par Codex en cours…`});
+    await i.editReply({content:`${scan.scanned} nouveaux messages lus. Analyse par IA OpenAI (Codex) en cours…`});
     result=validateTerrain(await this.analyze(scan.messages),scan.messages);
    }
    const sourceIds=new Set(result.movements.map(m=>m.source_id));
