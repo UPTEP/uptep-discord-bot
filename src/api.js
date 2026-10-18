@@ -29,7 +29,7 @@ export class Api {
  }
  async demands(){
   let after='0',all=[];const seen=new Set();const since=new Date(Date.now()-7*86400000).toISOString().replace(/\.\d{3}Z$/,'Z');
-  do{if(seen.has(after))throw new Error('Invalid pagination');seen.add(after);const data=await this.request('/demandes?'+new URLSearchParams({etat:'les_deux',include:'convois',terminees_depuis:since,limite:'100',apres:after}));all.push(...data.demandes);after=data.suite_apres;}while(after!==null);return all;
+  do{if(seen.has(after))throw new Error('Invalid pagination');seen.add(after);const data=await this.request('/demandes?'+new URLSearchParams({estimation:'1',etat:'les_deux',include:'convois',terminees_depuis:since,limite:'100',apres:after}));all.push(...data.demandes);after=data.suite_apres;}while(after!==null);return all;
  }
 }
 export class Snapshot {

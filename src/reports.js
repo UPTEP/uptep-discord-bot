@@ -1,3 +1,4 @@
+import {productionSummary} from './production.js';
 import fs from 'node:fs';
 import {parseEnv} from 'node:util';
 import {SlashCommandBuilder,ActionRowBuilder,ButtonBuilder,ButtonStyle,StringSelectMenuBuilder,MessageFlags,EmbedBuilder} from 'discord.js';
@@ -37,13 +38,13 @@ export function reportPayload(kind,data,sid,params={}){
  const filters=Object.entries(params).filter(([k])=>['joueur','etat','expediteur','destinataire','demande'].includes(k)).map(([k,v])=>`${k} : ${safe(v)}`);if(filters.length)heading+=filters.join(' · ')+'\n';
  const blocks=lines.map(r=>{
   if(kind==='recap-demandes')return `**${safe(r.pseudo)}**\nEffectuées : **${fmt(r.demandes_effectuees)}** · Validées : **${fmt(r.demandes_validees)}**\nTerminées : **${fmt(r.demandes_terminees)}** · Annulées : **${fmt(r.demandes_annulees)}**\nDernière demande : ${r.derniere_demande?date(r.derniere_demande):'Aucune demande'}`;
-  if(kind==='demandes')return `**#${r.id} · ${safe(r.pseudo_demandeur)} · ${demandStatus(r)}**\n${safe(r.objet)}${r.niveau?' niv. '+r.niveau:''}${r.auto_production?' · 🏭 Auto production':''} · ${qty(r.nbpomme_original,r.nbmateriaux_original)}\nDemande : ${date(r.date_demande)} · validation : ${date(r.date_validation)}\n${r.annulee?'Annulation : '+date(r.date_annulation):'Fin : '+date(r.date_fin)}`;
+  if(kind==='demandes')return `**#${r.id} · ${safe(r.pseudo_demandeur)} · ${demandStatus(r)}**\n${safe(r.objet)}${r.niveau?' niv. '+r.niveau:''}${r.auto_production?' · 🏭 Auto production':''} · ${qty(r.nbpomme_original,r.nbmateriaux_original)}\nDemande : ${date(r.date_demande)} · validation : ${date(r.date_validation)}\n${r.annulee?'Annulation : '+date(r.date_annulation):'Fin : '+date(r.date_fin)}${productionSummary(r)?'\n'+productionSummary(r):''}`;
   if(kind==='statistiques')return `**${safe(r.pseudo)}**\nEnvoyé : ${qty(r.pommes_envoyees,r.materiaux_envoyes)} (${fmt(r.envois)} convois)\nReçu : ${qty(r.pommes_recues,r.materiaux_recus)} (${fmt(r.receptions)} convois)\nMoy./jour envoyé : 🍎 ${mean(r.moyenne_pommes_envoyees)} · 🪵 ${mean(r.moyenne_materiaux_envoyes)}\nMoy./jour reçu : 🍎 ${mean(r.moyenne_pommes_recues)} · 🪵 ${mean(r.moyenne_materiaux_recus)}`;
   return convoyLine(r,kind!=='detail');
  });
  if(kind==='detail'){
   const d=data.demande;embed.setTitle(`Demande #${d.id} · ${short(d.pseudo_demandeur,100)}`);
-  heading=`**${demandStatus(d)} · ${safe(d.objet)}${d.niveau?' niv. '+d.niveau:''}**${d.auto_production?'\n🏭 **Auto production**':''}\nDemandé : ${qty(d.nbpomme_original,d.nbmateriaux_original)}\nRestant : ${qty(d.nbpomme_restant,d.nbmateriaux_restant)}\nCréation : ${date(d.date_demande)}\nValidation : ${date(d.date_validation)} · ${safe(d.pseudo_validateur)}\nClôture : ${date(d.date_fin)}${d.fin_manuelle?' · '+safe(d.pseudo_cloture):''}\n${d.annulee?'Annulation : '+date(d.date_annulation)+' · '+safe(d.pseudo_annulateur)+'\n':''}Date souhaitée : ${d.date_souhaitee?d.date_souhaitee.split('-').reverse().join('-'):'—'}${(d.ajustements||[]).length?'\n\n**Derniers ajustements du restant**\n'+d.ajustements.slice(0,3).map(a=>`${date(a.date_ajustement)} · ${safe(a.pseudo_acteur)} : 🍎 ${fmt(a.pommes_avant)} → ${fmt(a.pommes_apres)} · 🪵 ${fmt(a.materiaux_avant)} → ${fmt(a.materiaux_apres)}`).join('\n'):''}\n\n**Convois associés (toutes dates)**\n`;
+  heading=`**${demandStatus(d)} · ${safe(d.objet)}${d.niveau?' niv. '+d.niveau:''}**${d.auto_production?'\n🏭 **Auto production**':''}\nDemandé : ${qty(d.nbpomme_original,d.nbmateriaux_original)}\nRestant : ${qty(d.nbpomme_restant,d.nbmateriaux_restant)}\nCréation : ${date(d.date_demande)}\nValidation : ${date(d.date_validation)} · ${safe(d.pseudo_validateur)}\nClôture : ${date(d.date_fin)}${d.fin_manuelle?' · '+safe(d.pseudo_cloture):''}\n${d.annulee?'Annulation : '+date(d.date_annulation)+' · '+safe(d.pseudo_annulateur)+'\n':''}Date souhaitée : ${d.date_souhaitee?d.date_souhaitee.split('-').reverse().join('-'):'—'}${productionSummary(d)?'\n\n'+productionSummary(d,{detail:true}):''}${(d.ajustements||[]).length?'\n\n**Derniers ajustements du restant**\n'+d.ajustements.slice(0,3).map(a=>`${date(a.date_ajustement)} · ${safe(a.pseudo_acteur)} : 🍎 ${fmt(a.pommes_avant)} → ${fmt(a.pommes_apres)} · 🪵 ${fmt(a.materiaux_avant)} → ${fmt(a.materiaux_apres)}`).join('\n'):''}\n\n**Convois associés (toutes dates)**\n`;
  }
  // Eight rows can be large (long pseudos/objects). Fields preserve Discord's 4096 description limit.
  embed.setDescription(heading||'Toutes les dates sont affichées en heure de Paris.');
@@ -84,7 +85,7 @@ export class Reports {
     }else if(action!=='reportBack')throw new UserError('Action inconnue.');
    }
    const {kind,params}=session.data;
-   const query={...params,discord_id:i.user.id,page:String(page)};delete query.parent;
+   const query={...params,discord_id:i.user.id,page:String(page),...(['demandes','detail'].includes(kind)?{estimation:'1'}:{})};delete query.parent;
    let route=kind;
    if(kind==='detail'){route='demandes/'+params.demande;delete query.demande;}
    const data=await this.api.request('/rapports/'+route+'?'+new URLSearchParams(query));

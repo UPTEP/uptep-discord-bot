@@ -151,3 +151,9 @@ Déployer les services du site et la migration `convoy-auto-production.sql` avan
 ### Dépassement du restant
 
 Tous les dépassements peuvent être confirmés, quel que soit leur montant, après une alerte chiffrée pommes/matériaux. Les déclarations simples et les lots offrent la modification avant confirmation. Les lots répartissent la confirmation entre leurs lignes, y compris après le solde automatique de la demande. Si le restant diminue entre l’aperçu et l’écriture, le bot présente une nouvelle confirmation pour les lignes non enregistrées ; les reçus déjà obtenus et les reprises après coupure restent stables. Le site conserve le surplus et les quantités réelles ; une annulation recalcule le besoin sans ajouter artificiellement les ressources excédentaires.
+
+### Estimations de production
+
+Le tableau principal, le détail d’une demande, `/livraisons` et les demandes actives des historiques affichent le TdC, les cycles de 30 minutes restants et la fin théorique. Le détail indique la validation ou le dernier ajustement utilisé comme référence, la récolte nette et la date du calcul. Les taux d’étable inconnus sont signalés ; une production théorique suffisante laisse la demande ouverte.
+
+Les lectures utilisent `estimation=1` sur l’API, qui réutilise les historiques TdC, les colonies internes UPTEP et les niveaux d’étable du userscript. Le calculateur exact est recopié dans `src/production.js` ; le test de parité avec la source userscript et les scénarios numériques détectent les écarts. Les ouvrières ne sont pas utilisées. Ces informations sont purement indicatives : les montants réels, les confirmations de dépassement et les opérations de gestion ne sont pas modifiés. Le tableau est mis à jour par son actualisation automatique habituelle ; les réponses privées reflètent la date du calcul indiquée lorsqu’on les consulte.
