@@ -54,7 +54,7 @@ export class ValidationNotifications {
    if(entry.sent||entry.closed)continue;
    if(!channel.permissionsFor(channel.client.user)?.has(PermissionFlagsBits.MentionEveryone))throw new Error('Permission MentionEveryone nécessaire pour annoncer les validations.');
    const d=entry.demand;
-   const embed=new EmbedBuilder().setColor(0x4b9d52).setTitle(short(`Demande #${id} validée · ${d.pseudo_demandeur}`,200)).setDescription(short(d.objet||'Ressources',200)+(d.niveau?' · niveau '+d.niveau:'')).addFields({name:'Ressources restantes',value:`🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}`}).setFooter({text:'Utilise /livraisons pour estimer ton trajet, puis Déclarer un convoi pour enregistrer ton envoi.'});
+   const embed=new EmbedBuilder().setColor(0x4b9d52).setTitle(short(`Demande #${id} validée · ${d.pseudo_demandeur}`,200)).setDescription(short(d.objet||'Ressources',200)+(d.niveau?' · niveau '+d.niveau:'')+(d.auto_production?'\n🏭 **Auto production**':'')).addFields({name:'Ressources restantes',value:`🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}`}).setFooter({text:'Utilise /livraisons pour estimer ton trajet, puis Déclarer un convoi pour enregistrer ton envoi.'});
    const nonce=d.date_validation?'val-'+createHash('sha256').update(id+':'+d.date_validation).digest('hex').slice(0,20):'val-'+id;
    const msg=await channel.send({content:'@everyone Une demande de ressources vient d’être validée !',embeds:[embed],allowedMentions:{parse:['everyone'],users:[],roles:[]},nonce,enforceNonce:true});
    entry.sent=msg.id;this.state.save();

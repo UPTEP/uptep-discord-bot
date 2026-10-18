@@ -15,10 +15,11 @@ test('Batch parses line breaks, compact copies, markdown, duplicates and frozen 
  assert.throws(()=>convoyReports('x'.repeat(4001),'Peanut'),/4 000/);
 });
 function setup(){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'uptep-batch-'));let payload;const state=new State(dir);const demand={id:'8',pseudo_demandeur:'Peanut',nbpomme_restant:'0',nbmateriaux_restant:'40000'};const sid=state.create('123','deliver',{demand});const i={customId:'uptep:deliverForm:'+sid,user:{id:'123'},deferred:true,deferReply:async()=>{},fields:{fields:new Map([['report',{}]]),getTextInputValue:k=>k==='report'?first+'\n'+second:''},editReply:async p=>{payload=p;}};return {dir,state,demand,i,payload:()=>payload,close:()=>fs.rmSync(dir,{recursive:true})};}
-test('Preview lists each convoy and exact total; no writes before confirmation; invalid targets and totals blocked',async()=>{
+test('Preview lists each convoy and exact total; no writes before confirmation; invalid targets blocked and excess warned',async()=>{
  const t=setup();try{
   let writes=0;const ui=new UI({state:t.state,api:{member:async()=>({}),request:async()=>{writes++;}}});await ui.handle(t.i);const p=t.payload();assert.match(p.content,/30.000/);assert.equal(p.embeds.length,1);assert.match(p.embeds[0].toJSON().description,/1\..*\n2\./);assert.equal(writes,0);assert.equal(p.components[0].toJSON().components[0].label,'Confirmer les convois');
-  for(const raw of [first+'\n'+second.replace('Peanut','Other'),Array(3).fill(first).join('\n')]){await ui.handle({...t.i,fields:{fields:new Map([['report',{}]]),getTextInputValue:k=>k==='report'?raw:''}});assert.deepEqual(t.payload().components,[]);assert.equal(writes,0);}
+  for(const raw of [first+'\n'+second.replace('Peanut','Other')]){await ui.handle({...t.i,fields:{fields:new Map([['report',{}]]),getTextInputValue:k=>k==='report'?raw:''}});assert.deepEqual(t.payload().components,[]);assert.equal(writes,0);}
+  await ui.handle({...t.i,fields:{fields:new Map([['report',{}]]),getTextInputValue:k=>k==='report'?Array(3).fill(first).join('\n'):''}});assert.match(t.payload().content,/dépasse.*20.000/);assert.equal(writes,0);
  }finally{t.close();}
 });
 test('Partial success and lost response survive restart: stable keys, independent dates, replay without duplicate writes',async()=>{

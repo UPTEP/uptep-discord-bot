@@ -136,6 +136,18 @@ Licence MIT.
 
 ### Import de plusieurs convois
 
-Le formulaire « Déclarer un convoi » accepte jusqu’à 20 lignes « Vous allez livrer … » (4 000 caractères), avec retours à la ligne ou collage compact. Tous les destinataires doivent correspondre à la demande sélectionnée. Chaque occurrence est conservée, même identique ; chaque durée produit son heure d’arrivée, figée lors de l’analyse. Le récapitulatif privé affiche les quantités et arrivées individuelles, ainsi que les totaux exacts. Le total est vérifié contre le restant connu avant confirmation ; l’API revérifie les droits et le restant réel à chaque écriture.
+Le formulaire « Déclarer un convoi » accepte jusqu’à 20 lignes « Vous allez livrer … » (4 000 caractères), avec retours à la ligne ou collage compact. Tous les destinataires doivent correspondre à la demande sélectionnée. Chaque occurrence est conservée, même identique ; chaque durée produit son heure d’arrivée, figée lors de l’analyse. Le récapitulatif privé affiche les quantités et arrivées individuelles, ainsi que les totaux exacts. Le total est comparé au restant connu avant confirmation ; tout dépassement est affiché par ressource et peut être confirmé ou corrigé. L’API revérifie les droits et le dépassement réel à chaque écriture.
 
 La confirmation groupée enregistre les convois successivement via l’API existante : ce n’est pas une transaction atomique du lot. Les corps et identifiants de commande par ligne sont persistés avant toute écriture. Après une erreur ou un redémarrage, le bouton de reprise conserve les succès et réutilise la même commande pour les réponses incertaines. Le compteur indique uniquement les enregistrements confirmés par l’API. Les notifications existantes restent dédupliquées par ID de convoi. Les entrées mixtes (rapports et champs manuels), les lignes invalides et les autres destinataires sont refusés avant confirmation. Test de reprise, réponse perdue, concurrence et limites Discord : `test/convoy-batch.test.js`.
+
+### Demandes en auto production
+
+La création et la modification avant validation conservent leurs cinq champs, puis un bouton ouvre la modale de choix « Auto production » avant confirmation finale. Sur une demande validée, la case est préremplie dans l’ajustement. Les badges sont présents sur le tableau, les détails, la sélection, les livraisons et les nouvelles annonces de validation.
+
+Une déclaration vers une demande en auto production reste possible après avertissement explicite. Si l’option change après l’aperçu, le serveur refuse cette tentative sans écriture et le bot présente une nouvelle confirmation. Pour un lot partiellement traité, seuls les éléments restants sont repris ; les identifiants des commandes déjà enregistrées sont conservés. Les retries après coupure gardent le même contenu tant que leur résultat est incertain.
+
+Déployer les services du site et la migration `convoy-auto-production.sql` avant `src/ui.js`, `src/notifications.js` et `src/deliveries.js`, puis redémarrer le processus habituel. Tests : `npm test`, sans envoi réel sur Discord.
+
+### Dépassement du restant
+
+Tous les dépassements peuvent être confirmés, quel que soit leur montant, après une alerte chiffrée pommes/matériaux. Les déclarations simples et les lots offrent la modification avant confirmation. Les lots répartissent la confirmation entre leurs lignes, y compris après le solde automatique de la demande. Si le restant diminue entre l’aperçu et l’écriture, le bot présente une nouvelle confirmation pour les lignes non enregistrées ; les reçus déjà obtenus et les reprises après coupure restent stables. Le site conserve le surplus et les quantités réelles ; une annulation recalcule le besoin sans ajouter artificiellement les ressources excédentaires.
