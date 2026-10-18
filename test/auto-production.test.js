@@ -49,3 +49,10 @@ test('History reports and delivery suggestions identify auto production',()=>{
  const report=reportPayload('demandes',{lignes:[demand],page:1,pages:1,total:1},'sid');assert.match(report.embeds[0].toJSON().fields[0].value,/Auto production/);
  const delivery=deliveryPayload({joueur:'Sender',vitesse:1,lignes:[{...demand,distance:null,seconds:null}],page:1,pages:1,total:1},'123');assert.match(delivery.embeds[0].toJSON().fields[0].value,/Auto production/);
 });
+
+ test('Game send link is disabled for auto production and available for regular demands',()=>{
+ const auto=boardPayload([demand]).embeds[0].toJSON().description;
+ assert.match(auto,/Envoi désactivé/);assert.doesNotMatch(auto,/commerce\.php/);
+ const regular=boardPayload([{...demand,auto_production:false}]).embeds[0].toJSON().description;
+ assert.match(regular,/Livrer sur Fourmizzz/);assert.match(regular,/commerce\.php\?ID=2/);
+ });
