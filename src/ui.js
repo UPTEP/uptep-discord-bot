@@ -141,6 +141,8 @@ export class UI {
    if(['deliver','validate','cancel','browse','adjust'].includes(action)){
     const member=await this.api.member(i.user.id);const all=await this.snapshot.get();
     const rows=all.filter(d=>action==='browse'||(!d.fini&&!d.annulee&&(action==='deliver'?d.valide&&d.iddemandeur!==member.player_id:action==='validate'?!d.valide&&member.is_chaine:member.is_chaine||d.iddemandeur===member.player_id)));
+    // Consultation lists the most recent request first, so it opens on page 1.
+    if(action==='browse')rows.sort((x,y)=>{const a=BigInt(x.id),b=BigInt(y.id);return a<b?1:a>b?-1:0;});
     if(action==='validate'&&!member.is_chaine)throw new UserError('Il faut être administrateur du bot ou avoir le droit chaîne sur UPTEP pour valider les demandes.');
     if(!rows.length)return await i.editReply('Aucune demande disponible pour cette action.');
     const sid=this.state.create(i.user.id,action,{rows});return await i.editReply(this.selection(sid,this.state.get(sid,i.user.id),0));
