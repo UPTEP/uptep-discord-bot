@@ -196,3 +196,14 @@ Ce parcours est une connexion par lien privé, pas OAuth2. Le lien est un secret
 Si ton ID Discord est déjà associé par un administrateur à un joueur mais qu’aucun compte UPTEP n’existe, le lien propose de créer un compte membre à la confirmation. Un compte existant non lié doit être associé explicitement par un administrateur ; aucun compte désactivé n’est réactivé.
 
 La simulation `/connexion-test` a été retirée. `/connexion` est ouverte à tous les membres du serveur. La création d’un compte utilise le pseudo du joueur comme identifiant et nom affiché, puis le site propose de définir un mot de passe. Les migrations et tests isolés du dépôt du site conservent la couverture des inscriptions.
+
+## Déclaration des chasses
+
+Salon `HUNT_CHANNEL_ID`, pour les membres qui n’utilisent pas UPTEP+.
+
+- **Déclarer mes chasses** ouvre un formulaire : colle le bloc « Chasse en cours » de la page Chasse ou Ressources (50 chasses maximum, 4 000 caractères).
+- Formats reconnus : « Vos chasseuses vont conquérir 2 205 cm² dans 3 heures 19 minutes 31 secondes », avec ou sans « Arrivée à 09h26 », et « +2 573 cm² · retour dans 3 h 08 (aujourd’hui 23 h 55) ». Plusieurs chasses peuvent être collées d’un coup.
+- L’arrivée est l’heure d’envoi du formulaire plus la durée copiée. Si le rapport donne aussi une heure d’arrivée et que les deux diffèrent de plus de 2 minutes (copie ancienne), l’heure copiée est retenue et signalée.
+- Une confirmation privée liste chaque chasse (surface, arrivée) et le total. Rien n’est enregistré avant **Confirmer**.
+- Une déclaration Discord ajoute ou met à jour des chasses ; elle n’en annule jamais. Une chasse déjà relevée par UPTEP+ (même surface, arrivée à 3 minutes près) n’est pas dupliquée.
+- **Mes chasses en cours** liste les chasses enregistrées du joueur, avec leur source (Discord ou UPTEP+).

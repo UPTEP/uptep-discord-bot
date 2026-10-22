@@ -1,6 +1,7 @@
 import {receiveWebEvents} from './web-events.js';
 import {SiteLogin,loginCommand} from './login.js';
 import {Floods} from './floods.js';
+import {Hunts} from './hunts.js';
 import {helpCommand,helpPayload} from './help.js';
 import {Chain,chainCommand} from './chain.js';
 import {ValidationNotifications,ConvoyNotifications} from './notifications.js';
@@ -26,13 +27,15 @@ const suspension=new SuspendDemand({api,snapshot,refresh});
 const deliveries=new Deliveries({api,guildId:cfg.guildId});
 const chain=new Chain({api,guildId:cfg.guildId});
 const floods=new Floods({api,state,client,guildId:cfg.guildId,channelId:cfg.floodChannelId});
-let floodTimer;
+const hunts=new Hunts({api,state,client,guildId:cfg.guildId,channelId:cfg.huntChannelId});
+let floodTimer,huntTimer;
 const siteLogin=new SiteLogin({guildId:cfg.guildId,api});
 client.on(Events.InteractionCreate,async i=>{
  if(stopping)return;
  if(i.isChatInputCommand()&&i.commandName===loginCommand.name){await siteLogin.handle(i).catch(e=>console.error('Réponse connexion impossible :',e.name));return;}
  if(i.customId?.startsWith('uptep:flood:')){await floods.handle(i).catch(e=>console.error('Réponse floods impossible :',e.name));return;}
- if(i.isChatInputCommand()&&i.commandName==='aide'){await i.reply(i.guildId===cfg.guildId?helpPayload(cfg.channelId,cfg.floodChannelId):{content:'Commande disponible uniquement sur le serveur UPTEP.',flags:MessageFlags.Ephemeral}).catch(e=>console.error('Réponse aide impossible :',e.name));return;}
+ if(i.customId?.startsWith('uptep:hunt:')){await hunts.handle(i).catch(e=>console.error('Réponse chasses impossible :',e.name));return;}
+ if(i.isChatInputCommand()&&i.commandName==='aide'){await i.reply(i.guildId===cfg.guildId?helpPayload(cfg.channelId,cfg.floodChannelId,cfg.huntChannelId):{content:'Commande disponible uniquement sur le serveur UPTEP.',flags:MessageFlags.Ephemeral}).catch(e=>console.error('Réponse aide impossible :',e.name));return;}
  if(i.isChatInputCommand()&&i.commandName==='chaine'){await chain.handle(i).catch(e=>console.error('Publication chaîne impossible :',e.name));return;}
  if((i.isChatInputCommand()&&i.commandName==='livraisons')||i.customId?.startsWith('uptep:delivery:')){await deliveries.handle(i).catch(e=>console.error('Réponse livraisons impossible :',e.name));return;}
  // This command is received independently by the root-managed protected service.
@@ -79,10 +82,11 @@ client.once(Events.ClientReady,async()=>{
   console.log('Commandes slash principales enregistrées ; terrain géré par le service protégé.');
   await refresh();timer=setInterval(()=>refresh().catch(e=>console.error('Actualisation impossible :',e.name)),60000);
   if(cfg.floodChannelId){await floods.mount().catch(e=>console.error('Tableau floods :',e.message));await floods.flush();floodTimer=setInterval(()=>{floods.mount().catch(e=>console.error('Tableau floods :',e.message));floods.flush().catch(()=>console.error('MP floods différés.'));},60000);}
+  if(cfg.huntChannelId){await hunts.mount().catch(e=>console.error('Tableau chasses :',e.message));huntTimer=setInterval(()=>hunts.mount().catch(e=>console.error('Tableau chasses :',e.message)),60000);}
   console.log('Bot connecté ; tableau prêt dans le salon configuré.');
  }catch(e){console.error('Démarrage impossible :',e.message);await client.destroy();process.exitCode=1;}
 });
 client.on(Events.Error,e=>console.error('Connexion Discord :',e.name));
-async function stop(){stopping=true;clearInterval(timer);clearInterval(floodTimer);await client.destroy();process.exit(0);}
+async function stop(){stopping=true;clearInterval(timer);clearInterval(floodTimer);clearInterval(huntTimer);await client.destroy();process.exit(0);}
 process.on('SIGINT',stop);process.on('SIGTERM',stop);
 client.login(cfg.token).catch(()=>{console.error('Connexion Discord refusée. Vérifier le token.');process.exitCode=1;});

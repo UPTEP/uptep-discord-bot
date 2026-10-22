@@ -1,6 +1,6 @@
 import {SlashCommandBuilder,EmbedBuilder,MessageFlags} from 'discord.js';
 export const helpCommand=new SlashCommandBuilder().setName('aide').setDescription('Toutes les commandes UPTEP, leur utilisation et les droits nécessaires').toJSON();
-export function helpPayload(channelId,floodChannelId){
+export function helpPayload(channelId,floodChannelId,huntChannelId){
  const embed=new EmbedBuilder().setColor(0xd4a347).setTitle('🚌 UPTEP · Aide du bot').setDescription('Les commandes fonctionnent dans les salons accessibles du serveur UPTEP. Cette aide est visible uniquement par toi.').addFields(
   {name:'/aide',value:'Affiche cette liste. Accessible à tous, même sans association à un joueur.'},
   {name:'/livraisons vitesse:7',value:'Liste en privé les demandes validées des autres joueurs, du plus proche au plus éloigné, avec ressources restantes et temps de trajet. Remplace **7** par ton niveau de **Vitesse d’attaque** (obligatoire). Ton joueur est retrouvé grâce à ton ID Discord.'},
@@ -16,6 +16,7 @@ export function helpPayload(channelId,floodChannelId){
   {name:'🔔 Notifications et association',value:'Un convoi déclaré déclenche un MP au demandeur avec les quantités et l’arrivée prévue. Si ses MP sont bloqués, aucune notification de secours.\nSi ton ID Discord n’est pas associé à ton joueur, contacte **NoobEnCDI**.'}
  ).setFooter({text:'Le bot suit les déclarations : il n’envoie ni n’annule de convoi dans Fourmizzz.'});
  if(floodChannelId)embed.addFields({name:'⚔️ Suivi des floods',value:`Dans <#${floodChannelId}> : **Déclarer des floods** ouvre un formulaire de collage, puis une confirmation privée avec les pseudos, troupes et arrivées comprises. **Tous les floods en cours** affiche les attaques non arrivées ; **Floods vers moi** limite la liste à ton joueur. Les destinataires associés reçoivent un MP, sauf s’ils les bloquent. Le collage doit provenir d’un relevé récent : les durées partent de l’envoi du formulaire.`});
+ if(huntChannelId)embed.addFields({name:'🌿 Déclaration des chasses',value:`Dans <#${huntChannelId}> : **Déclarer mes chasses** ouvre un formulaire où tu colles le bloc « Chasse en cours » de la page Chasse ou Ressources, puis une confirmation privée avec les surfaces et les arrivées comprises. **Mes chasses en cours** liste tes chasses enregistrées, par Discord ou par UPTEP+. Colle un relevé récent : les durées partent de l’envoi du formulaire, sauf si l’heure d’arrivée copiée indique qu’il date.`});
  embed.addFields({name:'Conditions et données personnelles',value:'[CGU](https://uptep.top/cgu.html) · [Confidentialité](https://uptep.top/confidentialite.html) · [Mentions légales](https://uptep.top/mentions-legales.html)\n/solde-terrain utilise l’IA OpenAI : des messages du salon sont transmis pour extraire les mouvements. Les résultats peuvent comporter des erreurs. Contact : contact@crealinks.net.'});
  return {embeds:[embed],flags:MessageFlags.Ephemeral,allowedMentions:{parse:[]}};
 }

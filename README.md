@@ -17,6 +17,7 @@ Bot de suivi des demandes de ressources, convois et floods de l’alliance UPTEP
 | `/historique-demandes`, `/historique-convois`, `/stats-convois`, `/recap-demandes` | `ADMIN_DISCORD_IDS` | Rapports privés. |
 | Boutons de suivi des floods | Joueur UPTEP associé à Discord | Déclarations et listes privées, avec notifications aux cibles identifiées. |
 | `/connexion` | Tous les membres du serveur | Lien privé à usage unique vers le site. |
+| Boutons de déclaration des chasses | Joueur UPTEP associé à Discord | Collage du bloc « Chasse en cours », confirmation privée puis enregistrement des surfaces et arrivées. |
 | `/solde-terrain` | NoobEnCDI, via le service protégé | Analyse incrémentale et publication du solde de terrain. |
 
 L’association Discord doit être unique dans `chaine_members` et correspondre à un joueur actuellement présent dans UPTEP. La liste `ADMIN_DISCORD_IDS` ne contourne pas cette condition. Les droits sont revérifiés côté API ; la liste est relue sans redémarrage.
@@ -44,6 +45,7 @@ chmod 600 .env
 | `DISCORD_GUILD_ID` | Serveur Discord autorisé. |
 | `CONVOY_CHANNEL_ID` | Salon du tableau des demandes et convois. |
 | `FLOOD_CHANNEL_ID` | Salon des floods, facultatif. |
+| `HUNT_CHANNEL_ID` | Salon de déclaration des chasses, facultatif. |
 | `UPTEP_API_URL` | `https://uptep.top/api/bot/v1`. |
 | `UPTEP_API_TOKEN` | Secret API avec les scopes des fonctions utilisées. |
 | `ADMIN_DISCORD_IDS` | IDs autorisés pour les rapports Discord et la suspension. |
