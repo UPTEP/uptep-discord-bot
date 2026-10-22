@@ -17,6 +17,8 @@ test('Rapports Fourmizzz : quantités, destinataire et arrivée, jamais le retou
  const expected={nbpomme:'40000',nbmateriaux:'0',date_arrivee:'2026-10-11T15:55:57Z'};
  assert.deepEqual(convoyReport(bullet,'Justixon',now),expected);
  assert.deepEqual(convoyReport('**'+bullet+'**','Justixon',now),expected);
+ // Line rewritten by another script: the copied arrival clock is ignored, the duration is used.
+ assert.deepEqual(convoyReport("Vous allez livrer 0 nourriture et 200 000 matériaux à l-o-l dans 1H 0m 14s · arrivée aujourd'hui 10 h 54 - Retour le 22 oct. à 10h54",'l-o-l',now),{nbpomme:'0',nbmateriaux:'200000',date_arrivee:'2026-10-11T10:00:14Z'});
  assert.deepEqual(convoyReport('- Vous allez livrer **40 000** nourritures et **0** matériaux à **Justixon** dans **6H 55m 57s**','Justixon',now),expected);
  assert.throws(()=>convoyReport(bullet,'Achak',now),/Justixon/);
  assert.throws(()=>convoyReport('Vous allez livrer 1 nourritures et 0 materiaux à Justixon dans 1H','Achak',now),/Justixon/);
