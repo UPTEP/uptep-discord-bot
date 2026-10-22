@@ -1,11 +1,11 @@
 import {ActionRowBuilder,ButtonBuilder,ButtonStyle,EmbedBuilder,ModalBuilder,TextInputBuilder,TextInputStyle,MessageFlags} from 'discord.js';
 import {parseHunts} from './hunt-parser.js';
 import {floodReplyCleanup} from './floods.js';
-import {fmt,short,UserError} from './domain.js';
+import {fmt,short,escape as esc,UserError} from './domain.js';
 const row=(...buttons)=>new ActionRowBuilder().addComponents(buttons);
 const button=(id,label,style=ButtonStyle.Secondary)=>new ButtonBuilder().setCustomId('uptep:hunt:'+id).setLabel(label).setStyle(style);
 const PAGE=10;
-export function huntBoard(){return {embeds:[new EmbedBuilder().setColor(0x5f8a3a).setTitle('🌿 UPTEP · Déclaration des chasses').setDescription('Tu n’utilises pas UPTEP+ ? Copie le bloc **Chasse en cours** de la page Chasse ou Ressources, colle-le ici, vérifie le résultat puis confirme.\nLes chasses déjà relevées par UPTEP+ ne sont pas dupliquées.').setFooter({text:'UPTEP_HUNTS_V1'})],components:[row(button('declare','Déclarer mes chasses',ButtonStyle.Success),button('mine','Mes chasses en cours',ButtonStyle.Primary))],allowedMentions:{parse:[]}};}
+export function huntBoard(){return {embeds:[new EmbedBuilder().setColor(0x5f8a3a).setTitle('🌿 UPTEP · Déclaration des chasses').setDescription('Tu n’utilises pas UPTEP+ ? Copie le bloc **Chasse en cours** de la page Chasse ou Ressources, colle-le ici, vérifie le résultat puis confirme.\nLes chasses déjà relevées par UPTEP+ ne sont pas dupliquées.').setFooter({text:'UPTEP_HUNTS_V1'})],components:[row(button('declare','Déclarer mes chasses',ButtonStyle.Success),button('mine','Mes chasses en cours',ButtonStyle.Primary),button('all','Toutes les chasses en cours',ButtonStyle.Primary))],allowedMentions:{parse:[]}};}
 export function huntLine(h,n){const ts=Math.floor(Date.parse(h.arrival_at)/1000);return `**${n}.** ${fmt(h.area)} cm² · arrivée <t:${ts}:F> (<t:${ts}:R>)`;}
 export class Hunts{
  constructor({api,state,client,guildId,channelId}){Object.assign(this,{api,state,client,guildId,channelId});this.busy=new Set();this.mounting=false;}
@@ -35,6 +35,14 @@ export class Hunts{
   else{const total=data.hunts.reduce((sum,h)=>sum+BigInt(h.area),0n);e.setDescription(data.hunts.slice(0,25).map((h,n)=>huntLine(h,n+1)+(h.source==='discord'?' · Discord':' · UPTEP+')).join('\n')).setFooter({text:`${data.hunts.length} chasse${data.hunts.length>1?'s':''} · ${fmt(total)} cm² à venir`});}
   await i.editReply({embeds:[e],allowedMentions:{parse:[]}});
  }
+ // Whole alliance, 10 per page; the pagination buttons belong to the member who opened the list.
+ async all(i,page){
+  const data=await this.api.request('/chasses?'+new URLSearchParams({discord_id:i.user.id,scope:'all',page:String(page)}));
+  const e=new EmbedBuilder().setTitle('Toutes les chasses en cours').setColor(0x5f8a3a).setFooter({text:`${data.total} chasse${data.total>1?'s':''} · ${fmt(data.area)} cm² à venir · Page ${data.page}/${data.pages}`});
+  e.setDescription(data.hunts.length?data.hunts.map((h,n)=>{const ts=Math.floor(Date.parse(h.arrival_at)/1000);return `**${(data.page-1)*10+n+1}.** **${esc(h.pseudo)}** · ${fmt(h.area)} cm² · <t:${ts}:t> (<t:${ts}:R>)`;}).join('\n'):'Aucune chasse en cours enregistrée.');
+  const buttons=[];if(data.page>1)buttons.push(button(`list:${i.user.id}:${data.page-1}`,'Précédent'));if(data.page<data.pages)buttons.push(button(`list:${i.user.id}:${data.page+1}`,'Suivant'));
+  await i.editReply({embeds:[e],components:buttons.length?[row(...buttons)]:[],allowedMentions:{parse:[]}});
+ }
  async handle(i){const restore=floodReplyCleanup(i);try{return await this.process(i);}finally{restore();}}
  async process(i){
   if(i.guildId!==this.guildId||i.channelId!==this.channelId)return i.reply({content:'Ces boutons sont réservés au salon des chasses.',flags:MessageFlags.Ephemeral});
@@ -49,6 +57,8 @@ export class Hunts{
     return await i.editReply(this.preview(sid,this.state.get(sid,i.user.id)));
    }
    if(action==='mine')return await this.mine(i);
+   if(action==='all')return await this.all(i,1);
+   if(action==='list'){if(id!==i.user.id)throw new UserError('Cette liste appartient à un autre joueur.');return await this.all(i,Number(arg));}
    const s=this.state.get(id,i.user.id);if(s.type!=='hunt')throw new UserError('Formulaire invalide.');
    if(s.data.cancelled)throw new UserError('Déclaration abandonnée.');if(s.data.done)return await i.editReply('Ces chasses ont déjà été enregistrées.');
    if(action==='preview')return await i.editReply(this.preview(id,s,Number(arg)));

@@ -49,4 +49,11 @@ test('tableau, aperçu et confirmation sans appel Discord réel',async()=>{
  assert.equal(sent.path,'/chasses');assert.equal(sent.body.hunts.length,2);assert.match(replies.at(-1),/^✅ 2 chasses enregistrées/);
  await hunts.process({...base,customId:'uptep:hunt:confirm:s1'});assert.equal(replies.at(-1),'Ces chasses ont déjà été enregistrées.');
  await hunts.process({...base,channelId:'autre',customId:'uptep:hunt:declare'});assert.match(replies.at(-1).content,/réservés au salon des chasses/);
+ // Whole-alliance list with pagination owned by the member who opened it.
+ hunts.api={request:async path=>{sent={path};return {ok:true,total:12,area:'37183',page:path.includes('page=2')?2:1,pages:2,hunts:[{pseudo:'Hard_ware',area:'2401',arrival_at:'2026-10-22T09:18:19Z'}]};}};
+ await hunts.process({...base,customId:'uptep:hunt:all'});
+ assert.match(sent.path,/scope=all&page=1/);const list=replies.at(-1);assert.match(list.embeds[0].data.description,/\*\*Hard\\_ware\*\* · 2\s401 cm²/);assert.equal(list.components[0].components[0].data.custom_id,'uptep:hunt:list:u1:2');
+ await hunts.process({...base,customId:'uptep:hunt:list:u1:2'});assert.match(sent.path,/page=2/);
+ await hunts.process({...base,user:{id:'u2'},customId:'uptep:hunt:list:u1:2'});assert.match(replies.at(-1).content,/appartient à un autre joueur/);
+ assert.equal(huntBoard().components[0].components.length,3);
 });

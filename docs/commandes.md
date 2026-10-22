@@ -207,3 +207,4 @@ Salon `HUNT_CHANNEL_ID`, pour les membres qui n’utilisent pas UPTEP+.
 - Une confirmation privée liste chaque chasse (surface, arrivée) et le total. Rien n’est enregistré avant **Confirmer**.
 - Une déclaration Discord ajoute ou met à jour des chasses ; elle n’en annule jamais. Une chasse déjà relevée par UPTEP+ (même surface, arrivée à 3 minutes près) n’est pas dupliquée.
 - **Mes chasses en cours** liste les chasses enregistrées du joueur, avec leur source (Discord ou UPTEP+).
+- **Toutes les chasses en cours** liste les chasses de toute l’alliance par ordre d’arrivée (joueur, surface, heure et temps restant), 10 par page, avec le nombre total et la surface à venir. Réservé aux joueurs associés ; seule la personne qui a ouvert la liste peut la feuilleter.
