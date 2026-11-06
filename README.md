@@ -46,6 +46,7 @@ chmod 600 .env
 | `CONVOY_CHANNEL_ID` | Salon du tableau des demandes et convois. |
 | `FLOOD_CHANNEL_ID` | Salon des floods, facultatif. |
 | `HUNT_CHANNEL_ID` | Salon de déclaration des chasses, facultatif. |
+| `WAR_ALERT_CHANNEL_ID` | Salon des alertes « préparation de guerre », facultatif. Scopes `alertes:read` et `alertes:write`. |
 | `UPTEP_API_URL` | `https://uptep.top/api/bot/v1`. |
 | `UPTEP_API_TOKEN` | Secret API avec les scopes des fonctions utilisées. |
 | `ADMIN_DISCORD_IDS` | IDs autorisés pour les rapports Discord et la suspension. |
