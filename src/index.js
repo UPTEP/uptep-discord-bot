@@ -2,6 +2,7 @@ import {receiveWebEvents} from './web-events.js';
 import {SiteLogin,loginCommand} from './login.js';
 import {Floods} from './floods.js';
 import {Hunts} from './hunts.js';
+import {WarAlerts} from './war-alerts.js';
 import {helpCommand,helpPayload} from './help.js';
 import {Chain,chainCommand} from './chain.js';
 import {ValidationNotifications,ConvoyNotifications} from './notifications.js';
@@ -28,7 +29,8 @@ const deliveries=new Deliveries({api,guildId:cfg.guildId});
 const chain=new Chain({api,guildId:cfg.guildId});
 const floods=new Floods({api,state,client,guildId:cfg.guildId,channelId:cfg.floodChannelId});
 const hunts=new Hunts({api,state,client,guildId:cfg.guildId,channelId:cfg.huntChannelId});
-let floodTimer,huntTimer;
+const warAlerts=new WarAlerts({api,state,client,guildId:cfg.guildId,channelId:cfg.warAlertChannelId});
+let floodTimer,huntTimer,warAlertTimer;
 const siteLogin=new SiteLogin({guildId:cfg.guildId,api});
 client.on(Events.InteractionCreate,async i=>{
  if(stopping)return;
@@ -83,10 +85,12 @@ client.once(Events.ClientReady,async()=>{
   await refresh();timer=setInterval(()=>refresh().catch(e=>console.error('Actualisation impossible :',e.name)),60000);
   if(cfg.floodChannelId){await floods.mount().catch(e=>console.error('Tableau floods :',e.message));await floods.flush();floodTimer=setInterval(()=>{floods.mount().catch(e=>console.error('Tableau floods :',e.message));floods.flush().catch(()=>console.error('MP floods différés.'));},60000);}
   if(cfg.huntChannelId){await hunts.mount().catch(e=>console.error('Tableau chasses :',e.message));huntTimer=setInterval(()=>hunts.mount().catch(e=>console.error('Tableau chasses :',e.message)),60000);}
+  // Le collecteur importe à H:15 ; une vérification toutes les 5 minutes suffit et ne coûte qu'une requête sans nouveau relevé.
+  if(cfg.warAlertChannelId){const tick=()=>warAlerts.tick().catch(e=>console.error('Alertes guerre :',e.message));tick();warAlertTimer=setInterval(tick,5*60000);}
   console.log('Bot connecté ; tableau prêt dans le salon configuré.');
  }catch(e){console.error('Démarrage impossible :',e.message);await client.destroy();process.exitCode=1;}
 });
 client.on(Events.Error,e=>console.error('Connexion Discord :',e.name));
-async function stop(){stopping=true;clearInterval(timer);clearInterval(floodTimer);clearInterval(huntTimer);await client.destroy();process.exit(0);}
+async function stop(){stopping=true;clearInterval(timer);clearInterval(floodTimer);clearInterval(huntTimer);clearInterval(warAlertTimer);await client.destroy();process.exit(0);}
 process.on('SIGINT',stop);process.on('SIGTERM',stop);
 client.login(cfg.token).catch(()=>{console.error('Connexion Discord refusée. Vérifier le token.');process.exitCode=1;});
