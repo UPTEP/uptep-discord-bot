@@ -53,7 +53,8 @@ client.on(Events.InteractionCreate,async i=>{
    if(i.ephemeral===true){
     clearTimeout(cleanupTimer);
     const payload=args[0];
-    const finished=typeof payload==='object' && payload?.content?.startsWith('✅ Opération enregistrée sur UPTEP');
+    // A success that still offers a next step (Confirmer le lancement) stays like any other step.
+    const finished=typeof payload==='object' && payload?.content?.startsWith('✅ Opération enregistrée sur UPTEP') && !payload?.components?.length;
     const advanced=finished || (typeof payload==='object' && (payload?.components?.length>0 || payload?.embeds?.length>0));
     // Delete only the bot's private source message after the next step has been displayed.
     // Keep it while a modal is open, or when validation fails, so the user can retry.

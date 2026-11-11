@@ -1,19 +1,19 @@
 import {productionSummary} from './production.js';
 import {ActionRowBuilder,ButtonBuilder,ButtonStyle,ModalBuilder,TextInputBuilder,TextInputStyle,StringSelectMenuBuilder,MessageFlags,EmbedBuilder,CheckboxBuilder,LabelBuilder} from 'discord.js';
-import {UserError,quantity,amounts,dueDate,arrival,level,cleanText,fmt,escape,short,convoyReports,progress,frenchDate} from './domain.js';
+import {UserError,quantity,amounts,dueDate,arrival,level,cleanText,fmt,escape,short,convoyReports,progress,frenchDate,launchLines,unixTime} from './domain.js';
 const row=(...components)=>new ActionRowBuilder().addComponents(components);
 const button=(id,label,style=ButtonStyle.Secondary)=>new ButtonBuilder().setCustomId('uptep:'+id).setLabel(label).setStyle(style);
 const field=(id,label,required=true,placeholder='')=>row(new TextInputBuilder().setCustomId(id).setLabel(label).setStyle(TextInputStyle.Short).setRequired(required).setMaxLength(160).setPlaceholder(placeholder));
 const autoCheckbox=value=>new LabelBuilder().setLabel('Auto production').setDescription('Je prévois de produire moi-même les ressources. Les convois restent possibles après confirmation.').setCheckboxComponent(new CheckboxBuilder().setCustomId('auto_production').setDefault(value===true));
 const autoWarning='⚠️ Cette demande est en auto production. Souhaites-tu quand même déclarer ce convoi ?';
-export const actions=()=>[row(button('request','Demander des ressources',ButtonStyle.Success),button('deliver','Déclarer un convoi',ButtonStyle.Success),button('browse','Consulter',ButtonStyle.Primary)),row(button('validate','Valider une demande (droit admin requis)',ButtonStyle.Primary),button('cancel','Annuler / Terminer une demande',ButtonStyle.Danger),button('cancelConvoy','Annuler un convoi déclaré',ButtonStyle.Danger)),row(button('adjust','Modifier une demande',ButtonStyle.Primary))];
+export const actions=()=>[row(button('request','Demander des ressources',ButtonStyle.Success),button('deliver','Déclarer un convoi',ButtonStyle.Success),button('browse','Consulter',ButtonStyle.Primary)),row(button('validate','Valider une demande (droit admin requis)',ButtonStyle.Primary),button('cancel','Annuler / Terminer une demande',ButtonStyle.Danger),button('cancelConvoy','Annuler un convoi déclaré',ButtonStyle.Danger)),row(button('adjust','Modifier une demande',ButtonStyle.Primary),button('launch','Confirmer un lancement',ButtonStyle.Success))];
 const overage=(d,food,wood)=>({pommes:String(BigInt(food??0)>BigInt(d.nbpomme_restant??0)?BigInt(food??0)-BigInt(d.nbpomme_restant??0):0n),materiaux:String(BigInt(wood??0)>BigInt(d.nbmateriaux_restant??0)?BigInt(wood??0)-BigInt(d.nbmateriaux_restant??0):0n)});
 const hasOverage=e=>e.pommes!=='0'||e.materiaux!=='0';
 const overageWarning=e=>`⚠️ **Attention, le montant envoyé dépasse le restant demandé de 🍎 ${fmt(e.pommes)} pommes et 🪵 ${fmt(e.materiaux)} matériaux.**\nVérifie les montants. Confirmer autorise ce dépassement.`;
 function planOverages(d,items){let food=BigInt(d.nbpomme_restant??0),wood=BigInt(d.nbmateriaux_restant??0);return items.map(item=>{const e=overage({nbpomme_restant:food,nbmateriaux_restant:wood},item.body.nbpomme,item.body.nbmateriaux);food=food>BigInt(item.body.nbpomme)?food-BigInt(item.body.nbpomme):0n;wood=wood>BigInt(item.body.nbmateriaux)?wood-BigInt(item.body.nbmateriaux):0n;return e;});}
 export function boardPayload(demands){
  const open=demands.filter(d=>!d.fini);const done=demands.filter(d=>d.fini);
- const lines=open.slice(0,15).map(d=>`${d.valide?'🟢':'🟠'} **#${d.id} · ${escape(short(d.pseudo_demandeur,30))}** — ${escape(short(d.objet||'Ressources',40))}${d.niveau?' niv. '+d.niveau:''}${d.auto_production?' · 🏭 Auto production':''}\n🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}${d.auto_production?' · Envoi désactivé':''}${!d.auto_production&&d.valide&&!d.fini&&!d.annulee&&/^[1-9]\d*$/.test(String(d.iddemandeur))?' · [Livrer sur Fourmizzz](https://s5.fourmizzz.fr/commerce.php?ID='+d.iddemandeur+')':''}${d.date_souhaitee?' · souhaité le '+frenchDate(d.date_souhaitee):''}${d.valide?'\n'+progress(d)+'\n'+productionSummary(d):''}`);
+ const lines=open.slice(0,15).map(d=>`${d.valide?'🟢':'🟠'} **#${d.id} · ${escape(short(d.pseudo_demandeur,30))}** — ${escape(short(d.objet||'Ressources',40))}${d.niveau?' niv. '+d.niveau:''}${d.auto_production?' · 🏭 Auto production':''}\n🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}${d.auto_production?' · Envoi désactivé':''}${!d.auto_production&&d.valide&&!d.fini&&!d.annulee&&/^[1-9]\d*$/.test(String(d.iddemandeur))?' · [Livrer sur Fourmizzz](https://s5.fourmizzz.fr/commerce.php?ID='+d.iddemandeur+')':''}${d.date_souhaitee?' · souhaité le '+frenchDate(d.date_souhaitee):''}${d.valide?'\n'+progress(d)+'\n'+productionSummary(d):''}${launchLines(d).map(line=>'\n'+line).join('')}`);
  while(lines.join('\n\n').length>3700)lines.pop();
  return {embeds:[new EmbedBuilder().setColor(0x657645).setTitle('UPTEP · Gestion des convois').setDescription((lines.join('\n\n')||'Aucune demande en attente ou en cours.')+`\n\n🟠 À valider · 🟢 En cours\n${open.length} demande(s) ouverte(s) · ${done.length} terminée(s) sur 7 jours.`).setFooter({text:'UPTEP_CONVOYS_V1 · Actualisation automatique · Estimation théorique : cycles de 30 min'}).setTimestamp()],components:actions(),allowedMentions:{parse:[]}};
 }
@@ -37,6 +37,7 @@ export class UI {
     const filled=(key,label,value)=>{const f=field(key,label,false);if(value)f.components[0].setValue(value);return f;};
     return await i.showModal(new ModalBuilder().setCustomId('uptep:deliverForm:'+sid).setTitle('Vérifier les données du convoi').addComponents(filled('food','Pommes envoyées',d.body.nbpomme),filled('wood','Matériaux envoyés',d.body.nbmateriaux),filled('arrival','Arrivée (ISO avec fuseau)',d.body.date_arrivee)));
    }
+   if(action==='launchOpen'){const s=this.state.get(id,i.user.id);if(s.type!=='launch')throw new UserError('Formulaire expiré. Utilise Confirmer un lancement sur le tableau.');return await i.showModal(this.launchModal(id,s.data.demand));}
    if(action==='pick'){
     const s=this.state.get(id,i.user.id);const demand=s.data.rows.find(d=>d.id===i.values[0]);if(!demand)throw new UserError('Demande inconnue.');
     if(s.type==='adjust'){
@@ -54,6 +55,7 @@ export class UI {
      const sid=this.state.create(i.user.id,'deliver',{demand});
      return await i.showModal(new ModalBuilder().setCustomId('uptep:deliverForm:'+sid).setTitle(short('Convoi #'+demand.id+' · '+demand.pseudo_demandeur,45)).addComponents(row(new TextInputBuilder().setCustomId('report').setLabel('Rapport(s) du jeu · jusqu’à 20 convois').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(4000).setPlaceholder('Vous allez livrer …')),field('food','Pommes envoyées',false),field('wood','Matériaux envoyés',false),field('arrival','Arrivée (facultatif)',false,'Durée : 2h 30m')));
     }
+    if(s.type==='launch'){const sid=this.state.create(i.user.id,'launch',{demand});return await i.showModal(this.launchModal(sid,demand));}
     await i.deferReply({flags:MessageFlags.Ephemeral});
     if(s.type==='cancelConvoy'){
      const member=await this.api.member(i.user.id);if(!member.is_chaine&&member.player_id!==demand.idenvoyeur)throw new UserError('Tu peux uniquement annuler tes propres convois.');
@@ -76,6 +78,15 @@ export class UI {
     const s=this.state.get(id,i.user.id);if(s.type!=='closeDemand'||!['cancel','finish'].includes(arg))throw new UserError('Action invalide.');
     const d=s.data.demand;this.check('cancel',d,await this.api.member(i.user.id));
     return await this.stage(i,'cancel',{path:'/demandes/'+d.id+'/'+(arg==='finish'?'terminaison':'annulation'),body:{discord_id:i.user.id},summary:`${arg==='finish'?'Terminer':'Annuler'} la demande #${d.id} de **${escape(d.pseudo_demandeur)}** ?\nLes convois restent dans l’historique.${arg==='finish'?' Les quantités encore attendues sont conservées, mais la demande sera fermée.':''}`});
+   }
+   if(action==='launchForm'){
+    const s=this.state.get(id,i.user.id);if(s.type!=='launch')throw new UserError('Formulaire invalide.');
+    const d=s.data.demand;this.check('launch',d,await this.api.member(i.user.id));
+    const remaining=i.fields.getTextInputValue('remaining');if(!remaining.trim())throw new UserError('Indique le temps restant affiché dans le jeu, par exemple 12h 26m.');
+    const now=new Date();let end;try{end=arrival(remaining,now);}catch{throw new UserError('Temps restant : indique une durée comme 12h 26m.');}
+    if(/^\d{4}-/.test(remaining.trim()))throw new UserError('Temps restant : indique une durée comme 12h 26m.');
+    const kind=d.type_construction==='recherche'?'la recherche':'la construction',t=unixTime(end);
+    return await this.stage(i,'launch',{path:'/demandes/'+d.id+'/lancement',body:{discord_id:i.user.id,date_lancement:now.toISOString().replace(/\.\d{3}Z$/,'Z'),date_fin_construction:end},summary:`Confirmer le lancement de ${kind} **${escape(d.objet||'Ressources')}${d.niveau?' niv. '+d.niveau:''}** · demande #${d.id} ?\nFin prévue : <t:${t}:f> (<t:${t}:R>)\nElle s’affichera sur la prochaine demande de **${escape(d.pseudo_demandeur)}**.`});
    }
    if(action==='autoForm'){
     const s=this.state.get(id,i.user.id);if(s.type!=='auto-options'||s.data.used)throw new UserError('Cette confirmation a déjà été préparée. Utilise le bouton Confirmer existant.');
@@ -128,30 +139,34 @@ export class UI {
     if(this.busy.has(id))throw new UserError('Cette opération est déjà en cours.');this.busy.add(id);this.state.set(id,{...s.data,attempted:true});
     try{
      const result=await this.api.request(s.data.path,{body:s.data.body});const content=`✅ Opération enregistrée sur UPTEP · demande #${result.demande.id}.`;
+     // A demand just finished by hand can have its launch confirmed straight away.
+     const launch=/^\/demandes\/[0-9]+\/terminaison$/.test(s.data.path)&&result.demande.lancement_attendu?this.state.create(i.user.id,'launch',{demand:result.demande}):null;
      if(/^\/demandes\/[0-9]+\/validation$/.test(s.data.path))this.notifications?.enqueue(result.demande);
      if(/^\/demandes\/[0-9]+\/convois$/.test(s.data.path))this.convoyNotifications?.enqueue(result);
      this.convoyNotifications?.flush().catch(()=>console.error('MP convoi différé.'));
      this.notifications?.flush().catch(()=>console.error('Annonce de validation différée.'));
-     this.state.set(id,{...s.data,result:content});await i.editReply({content,components:[]});
+     this.state.set(id,{...s.data,result:content});await i.editReply(launch?{content:content+'\nConstruction ou recherche lancée dans le jeu ? Confirme-la pour l’afficher sur la prochaine demande.',components:[row(button('launchOpen:'+launch,'Confirmer le lancement',ButtonStyle.Success))]}:{content,components:[]});
      this.snapshot.invalidate();this.refresh().catch(()=>console.error('Actualisation du tableau différée.'));
     }catch(e){if(e.status===409&&/auto production|dépassement/i.test(e.message)&&s.data.demand){this.state.set(id,{...s.data,superseded:true});const {result,attempted,superseded,...retry}=s.data;return await this.stage(i,'deliver',{...retry,body:{...s.data.body},demand:{...s.data.demand,...(/auto production/i.test(e.message)?{auto_production:true}:{})},summary:s.data.summary});}await i.editReply({content:this.error(e),components:[row(button('apply:'+id,'Réessayer la même opération',ButtonStyle.Primary))]});}
     finally{this.busy.delete(id);}return;
    }
    if(action==='page'){const s=this.state.get(id,i.user.id);return await i.editReply(this.selection(id,s,Number(arg)));}
-   if(['deliver','validate','cancel','browse','adjust'].includes(action)){
+   if(['deliver','validate','cancel','browse','adjust','launch'].includes(action)){
     const member=await this.api.member(i.user.id);const all=await this.snapshot.get();
-    const rows=all.filter(d=>action==='browse'||(!d.fini&&!d.annulee&&(action==='deliver'?d.valide&&d.iddemandeur!==member.player_id:action==='validate'?!d.valide&&member.is_chaine:member.is_chaine||d.iddemandeur===member.player_id)));
+    // Launches: delivered demands awaiting one (the server sets lancement_attendu), own ones unless chaîne.
+    const rows=all.filter(d=>action==='browse'||(action==='launch'?d.lancement_attendu&&(member.is_chaine||d.iddemandeur===member.player_id):!d.fini&&!d.annulee&&(action==='deliver'?d.valide&&d.iddemandeur!==member.player_id:action==='validate'?!d.valide&&member.is_chaine:member.is_chaine||d.iddemandeur===member.player_id)));
     // Consultation lists the most recent request first, so it opens on page 1.
     if(action==='browse')rows.sort((x,y)=>{const a=BigInt(x.id),b=BigInt(y.id);return a<b?1:a>b?-1:0;});
     if(action==='validate'&&!member.is_chaine)throw new UserError('Il faut être administrateur du bot ou avoir le droit chaîne sur UPTEP pour valider les demandes.');
-    if(!rows.length)return await i.editReply('Aucune demande disponible pour cette action.');
+    if(!rows.length)return await i.editReply(action==='launch'?'Aucune demande complète en attente de confirmation de lancement. Seules les demandes terminées depuis le 11/11 sont concernées.':'Aucune demande disponible pour cette action.');
     const sid=this.state.create(i.user.id,action,{rows});return await i.editReply(this.selection(sid,this.state.get(sid,i.user.id),0));
    }
    throw new UserError('Action inconnue.');
   }catch(e){const payload={content:this.error(e),components:[],allowedMentions:{parse:[]}};if(i.deferred||i.replied)await i.editReply(payload);else await i.reply({...payload,flags:MessageFlags.Ephemeral});}
  }
  error(e){if(e instanceof UserError)return e.message;console.error('Erreur interaction :',e.name);return 'Une erreur est survenue. Réessaie depuis le tableau.';}
- check(type,d,m){if(type==='adjust'&&!m.is_chaine&&m.player_id!==d.iddemandeur)throw new UserError('Tu peux uniquement ajuster tes propres demandes.');if(type==='validate'&&!m.is_chaine)throw new UserError('Un droit administrateur du bot ou le droit chaîne est nécessaire.');if(type==='cancel'&&!m.is_chaine&&m.player_id!==d.iddemandeur)throw new UserError('Tu peux uniquement annuler tes demandes.');}
+ check(type,d,m){if(type==='adjust'&&!m.is_chaine&&m.player_id!==d.iddemandeur)throw new UserError('Tu peux uniquement ajuster tes propres demandes.');if(type==='validate'&&!m.is_chaine)throw new UserError('Un droit administrateur du bot ou le droit chaîne est nécessaire.');if(type==='cancel'&&!m.is_chaine&&m.player_id!==d.iddemandeur)throw new UserError('Tu peux uniquement annuler tes demandes.');if(type==='launch'&&!m.is_chaine&&m.player_id!==d.iddemandeur)throw new UserError('Tu peux uniquement confirmer le lancement de tes demandes.');}
+ launchModal(sid,d){return new ModalBuilder().setCustomId('uptep:launchForm:'+sid).setTitle(short(`Lancement · #${d.id} · ${d.objet||'Ressources'}`,45)).addComponents(field('remaining','Temps restant affiché dans le jeu',true,'Exemple : 12h 26m'));}
  async autoOptions(i,type,data,value=false){const sid=this.state.create(i.user.id,'auto-options',{type,data,auto:value===true});return i.editReply({content:data.summary+'\n\nChoisis l’option Auto production avant la confirmation finale.',components:[row(button('autoOptions:'+sid,'Auto production et confirmation',ButtonStyle.Primary))],allowedMentions:{parse:[]}});}
  async freshDemand(d){if(!this.snapshot?.get)return d;this.snapshot.invalidate?.();return (await this.snapshot.get()).find(row=>row.id===d.id)??d;}
  async stage(i,type,data){if(type==='deliver'&&data.demand){data.demand=await this.freshDemand(data.demand);const excess=overage(data.demand,data.body.nbpomme,data.body.nbmateriaux);delete data.body.overage_confirmed;data.summary=data.summary.split('\n\n⚠️ **Attention, le montant envoyé')[0];if(hasOverage(excess)){data.body.overage_confirmed=excess;data.summary+='\n\n'+overageWarning(excess);}if(data.demand.auto_production){data.body.auto_production_confirmed=true;if(!data.summary.includes(autoWarning))data.summary+='\n\n'+autoWarning;}}const sid=this.state.create(i.user.id,'job',{});data.body.commande_id='discord:'+sid;this.state.set(sid,data);return i.editReply({content:data.summary+'\n\nConfirme pour enregistrer cette action.',components:[row(button('apply:'+sid,'Confirmer',['cancel','cancelConvoy'].includes(type)?ButtonStyle.Danger:ButtonStyle.Success),...(type==='deliver'?[button('edit:'+sid,'Vérifier / modifier les champs')]:[]))],allowedMentions:{parse:[]}});}
@@ -206,6 +221,6 @@ export class UI {
  detail(d){
   const lines=(d.convois||[]).slice(-15).reverse().map(c=>`• ${c.annule?'❌ Annulé · ':''}${escape(short(c.pseudo_envoyeur,30))} : 🍎 ${fmt(c.nbpomme)} · 🪵 ${fmt(c.nbmateriaux)}${c.date_arrivee?' · arrivée <t:'+Math.floor(new Date(c.date_arrivee).getTime()/1000)+':f>':''}`);
   const adjustments=(d.ajustements||[]).slice(0,5).map(a=>`• <t:${Math.floor(new Date(a.date_ajustement).getTime()/1000)}:f> · ${escape(short(a.pseudo_acteur,30))} : 🍎 ${fmt(a.pommes_avant)} → ${fmt(a.pommes_apres)} · 🪵 ${fmt(a.materiaux_avant)} → ${fmt(a.materiaux_apres)}`);
-  return {embeds:[new EmbedBuilder().setColor(0x657645).setTitle(short(`#${d.id} · ${d.pseudo_demandeur}`,100)).setDescription(short(`${escape(d.objet||'Ressources')}${d.niveau?' · niveau '+d.niveau:''}${d.auto_production?'\n🏭 **Auto production**':''}\n${d.fini?'Terminée':d.valide?'En cours':'En attente de validation'}${d.valide?'\n'+progress(d)+' · besoin couvert':''}\n\nRestant : 🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}\nDemandé : 🍎 ${fmt(d.nbpomme_original)} · 🪵 ${fmt(d.nbmateriaux_original)}${productionSummary(d)?'\n\n'+productionSummary(d,{detail:true}):''}\n\n**Derniers convois (${d.convois?.length||0} au total)**\n${lines.join('\n')||'Aucun convoi.'}${adjustments.length?'\n\n**Derniers ajustements du restant**\n'+adjustments.join('\n'):''}`,4000))],components:[],allowedMentions:{parse:[]}};
+  return {embeds:[new EmbedBuilder().setColor(0x657645).setTitle(short(`#${d.id} · ${d.pseudo_demandeur}`,100)).setDescription(short(`${escape(d.objet||'Ressources')}${d.niveau?' · niveau '+d.niveau:''}${d.auto_production?'\n🏭 **Auto production**':''}\n${d.fini?'Terminée':d.valide?'En cours':'En attente de validation'}${d.valide?'\n'+progress(d)+' · besoin couvert':''}${launchLines(d,{always:true}).map(line=>'\n'+line).join('')}\n\nRestant : 🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}\nDemandé : 🍎 ${fmt(d.nbpomme_original)} · 🪵 ${fmt(d.nbmateriaux_original)}${productionSummary(d)?'\n\n'+productionSummary(d,{detail:true}):''}\n\n**Derniers convois (${d.convois?.length||0} au total)**\n${lines.join('\n')||'Aucun convoi.'}${adjustments.length?'\n\n**Derniers ajustements du restant**\n'+adjustments.join('\n'):''}`,4000))],components:[],allowedMentions:{parse:[]}};
  }
 }

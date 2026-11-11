@@ -63,4 +63,16 @@ export function progress(d){
  return '`'+ '█'.repeat(blocks)+'░'.repeat(10-blocks)+'` **'+percentage+' %**';
 }
 
+// PostgreSQL timestamps ("2026-11-11 10:43:57+00") as Unix seconds for Discord <t:…> tags.
+export function unixTime(raw){const ms=Date.parse(String(raw??'').replace(' ','T').replace(/([+-]\d{2})$/,'$1:00'));return Number.isFinite(ms)?Math.floor(ms/1000):null;}
+// This demand's launch and the requester's previous one of the same kind. The previous one shows while
+// running, always while the demand awaits validation (it helps to decide), and always with {always:true}.
+export function launchLines(d,{always=false,now=Date.now()}={}){
+ const kind=d.type_construction==='recherche'?'Recherche':'Construction',seconds=now/1000,lines=[];
+ const end=unixTime(d.fin_construction);
+ if(d.lancement_construction&&end)lines.push(`🏗 ${kind} lancée · ${end>seconds?'fin':'terminée'} <t:${end}:f> (<t:${end}:R>)`);
+ const p=d.lancement_precedent,previous=unixTime(p?.fin_construction);
+ if(p&&previous&&(always||!d.valide||previous>seconds))lines.push(`⏳ ${kind} précédente : ${escape(short(p.objet||'#'+p.id,40))}${p.niveau?' niv. '+p.niveau:''} · ${previous>seconds?'fin':'terminée'} <t:${previous}:f> (<t:${previous}:R>)`);
+ return lines;
+}
 export const frenchDate=value=>String(value).replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3-$2-$1');
