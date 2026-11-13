@@ -208,3 +208,13 @@ Salon `HUNT_CHANNEL_ID`, pour les membres qui n’utilisent pas UPTEP+.
 - Une déclaration Discord ajoute ou met à jour des chasses ; elle n’en annule jamais. Une chasse déjà relevée par UPTEP+ (même surface, arrivée à 3 minutes près) n’est pas dupliquée.
 - **Mes chasses en cours** liste les chasses enregistrées du joueur, avec leur source (Discord ou UPTEP+).
 - **Toutes les chasses en cours** liste les chasses de toute l’alliance par ordre d’arrivée (joueur, surface, heure et temps restant), 10 par page, avec le nombre total et la surface à venir. Réservé aux joueurs associés ; seule la personne qui a ouvert la liste peut la feuilleter.
+
+## Alertes « préparation de guerre »
+
+Configurer `WAR_ALERT_CHANNEL_ID` dans `.env`, puis redémarrer. Permissions : voir le salon, écrire, intégrer des liens et lire l’historique. Toutes les 5 minutes, le bot demande au site d’évaluer le dernier relevé des joueurs. Cette demande est idempotente et ne coûte qu’une requête s’il n’y a pas de nouveau relevé. Le bot publie ensuite les alertes en attente.
+
+- **Nouvelle alerte.** Le message indique l’alliance, son nombre de membres et son TDC, puis l’heure du relevé (Paris). Pour chaque compte gonflé, il donne l’évolution du TDC, ses 3 principaux donneurs internes et les membres UPTEP proches, avec leur taille relative. Il liste aussi les gros comptes à l’arrêt et la diplomatie, dont la présence d’un pacte avec UPTEP.
+- **Mise à jour.** Elle est publiée en réponse au premier message, seulement si de nouveaux comptes gonflés apparaissent dans un épisode encore actif (moins de 12 h sans détection).
+- **Fiabilité.** L’ID du message publié est sauvegardé dans `data/state.json` avant l’acquittement : un redémarrage entre les deux ne republie pas l’alerte. Les mentions sont désactivées et les pseudos échappés.
+
+L’alerte est indicative : environ 8 sur 10 ne sont suivies d’aucune attaque. Les seuils sont décrits dans le README du site.
