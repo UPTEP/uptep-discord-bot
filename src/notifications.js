@@ -1,10 +1,11 @@
 import {EmbedBuilder,PermissionFlagsBits} from 'discord.js';
-import {fmt,short,launchLines} from './domain.js';
+import {fmt,short,launchLines,restricted} from './domain.js';
 import {createHash} from 'node:crypto';
 export class ValidationNotifications {
  constructor({state,getChannel,api}){Object.assign(this,{state,getChannel,api});this.running=null;}
  enqueue(demand){
-  if(!demand?.valide)return;
+  // No @everyone announcement for a restricted demand.
+  if(!demand?.valide||restricted(demand))return;
   const key=String(demand.id);this.state.data.validationNotifications??={};
   const prior=this.state.data.validationNotifications[key];
   if(prior&&!prior.removed&&prior.demand.date_validation===demand.date_validation)return;

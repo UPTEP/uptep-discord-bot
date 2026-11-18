@@ -75,4 +75,7 @@ export function launchLines(d,{always=false,now=Date.now()}={}){
  if(p&&previous&&(always||!d.valide||previous>seconds))lines.push(`⏳ ${kind} précédente : ${escape(short(p.objet||'#'+p.id,40))}${p.niveau?' niv. '+p.niveau:''} · ${previous>seconds?'fin':'terminée'} <t:${previous}:f> (<t:${previous}:R>)`);
  return lines;
 }
+// Restricted demands (visible_par set by the site) are shown only to their requester and listed players.
+export const restricted=d=>Array.isArray(d?.visible_par)&&d.visible_par.length>0;
+export const visibleTo=(d,player)=>!restricted(d)||String(d.iddemandeur)===String(player)||d.visible_par.map(String).includes(String(player));
 export const frenchDate=value=>String(value).replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3-$2-$1');
