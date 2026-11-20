@@ -10,10 +10,10 @@ export function quantity(raw){
 export function amounts(food,wood){const nbpomme=quantity(food),nbmateriaux=quantity(wood);if(nbpomme==='0'&&nbmateriaux==='0')throw new UserError('Renseigne au moins une quantité supérieure à zéro.');return {nbpomme,nbmateriaux};}
 export function dueDate(raw,now=new Date()){
  if(!raw?.trim())return undefined;
- const m=/^(\d{2})-(\d{2})-(\d{4})$/.exec(raw.trim());if(!m)throw new UserError('Date souhaitée attendue au format JJ-MM-AAAA.');
+ const m=/^(\d{2})-(\d{2})-(\d{4})$/.exec(raw.trim());if(!m)throw new UserError('Date de validation souhaitée attendue au format JJ-MM-AAAA.');
  const input=m[3]+'-'+m[2]+'-'+m[1];
- const d=new Date(input+'T12:00:00Z');if(!Number.isFinite(+d)||d.toISOString().slice(0,10)!==input)throw new UserError('Date souhaitée invalide.');
- const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris'}).format(now);if(input<today)throw new UserError('La date souhaitée est déjà passée.');return input;
+ const d=new Date(input+'T12:00:00Z');if(!Number.isFinite(+d)||d.toISOString().slice(0,10)!==input)throw new UserError('Date de validation souhaitée invalide.');
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris'}).format(now);if(input<today)throw new UserError('La date de validation souhaitée est déjà passée.');return input;
 }
 export function arrival(raw,now=new Date()){
  if(!raw?.trim())return undefined;

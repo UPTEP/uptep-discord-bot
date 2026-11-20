@@ -14,7 +14,7 @@ function planOverages(d,items){let food=BigInt(d.nbpomme_restant??0),wood=BigInt
 export function boardPayload(demands){
  // One message for everyone: restricted demands stay off it and are reached through the private lists.
  const shared=demands.filter(d=>!restricted(d));const open=shared.filter(d=>!d.fini);const done=shared.filter(d=>d.fini);
- const lines=open.slice(0,15).map(d=>`${d.valide?'🟢':'🟠'} **#${d.id} · ${escape(short(d.pseudo_demandeur,30))}** — ${escape(short(d.objet||'Ressources',40))}${d.niveau?' niv. '+d.niveau:''}${d.auto_production?' · 🏭 Auto production':''}\n🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}${d.auto_production?' · Envoi désactivé':''}${!d.auto_production&&d.valide&&!d.fini&&!d.annulee&&/^[1-9]\d*$/.test(String(d.iddemandeur))?' · [Livrer sur Fourmizzz](https://s5.fourmizzz.fr/commerce.php?ID='+d.iddemandeur+')':''}${d.date_souhaitee?' · souhaité le '+frenchDate(d.date_souhaitee):''}${d.valide?'\n'+progress(d)+'\n'+productionSummary(d):''}${launchLines(d).map(line=>'\n'+line).join('')}`);
+ const lines=open.slice(0,15).map(d=>`${d.valide?'🟢':'🟠'} **#${d.id} · ${escape(short(d.pseudo_demandeur,30))}** — ${escape(short(d.objet||'Ressources',40))}${d.niveau?' niv. '+d.niveau:''}${d.auto_production?' · 🏭 Auto production':''}\n🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}${d.auto_production?' · Envoi désactivé':''}${!d.auto_production&&d.valide&&!d.fini&&!d.annulee&&/^[1-9]\d*$/.test(String(d.iddemandeur))?' · [Livrer sur Fourmizzz](https://s5.fourmizzz.fr/commerce.php?ID='+d.iddemandeur+')':''}${d.date_souhaitee?' · validation souhaitée le '+frenchDate(d.date_souhaitee):''}${d.valide?'\n'+progress(d)+'\n'+productionSummary(d):''}${launchLines(d).map(line=>'\n'+line).join('')}`);
  while(lines.join('\n\n').length>3700)lines.pop();
  return {embeds:[new EmbedBuilder().setColor(0x657645).setTitle('UPTEP · Gestion des convois').setDescription((lines.join('\n\n')||'Aucune demande en attente ou en cours.')+`\n\n🟠 À valider · 🟢 En cours\n${open.length} demande(s) ouverte(s) · ${done.length} terminée(s) sur 7 jours.`).setFooter({text:'UPTEP_CONVOYS_V1 · Actualisation automatique · Estimation théorique : cycles de 30 min'}).setTimestamp()],components:actions(),allowedMentions:{parse:[]}};
 }
@@ -25,7 +25,7 @@ export class UI {
   try{
    if(action==='request'){
     const sid=this.state.create(i.user.id,'request');
-    return await i.showModal(new ModalBuilder().setCustomId('uptep:requestForm:'+sid).setTitle('Demander des ressources').addComponents(field('objet','Bâtiment ou recherche'),field('niveau','Niveau visé',true,'Exemple : 20'),field('food','Pommes',false,'Exemple : 100k'),field('wood','Matériaux',false,'Exemple : 1,5m'),field('date','Date souhaitée (facultatif)',false,'JJ-MM-AAAA')));
+    return await i.showModal(new ModalBuilder().setCustomId('uptep:requestForm:'+sid).setTitle('Demander des ressources').addComponents(field('objet','Bâtiment ou recherche'),field('niveau','Niveau visé',true,'Exemple : 20'),field('food','Pommes',false,'Exemple : 100k'),field('wood','Matériaux',false,'Exemple : 1,5m'),field('date','Date de validation souhaitée (facultatif)',false,'JJ-MM-AAAA')));
    }
    if(action==='autoOptions'){
     const s=this.state.get(id,i.user.id);if(s.type!=='auto-options'||s.data.used)throw new UserError('Ce formulaire a déjà été confirmé. Repars du tableau.');
@@ -45,7 +45,7 @@ export class UI {
      if(!demand.valide){
       const sid=this.state.create(i.user.id,'modify',{demand});
       const filled=(key,label,value,required=true)=>{const f=field(key,label,required);if(value!==null&&value!==undefined&&value!=='')f.components[0].setValue(String(value));return f;};
-      return await i.showModal(new ModalBuilder().setCustomId('uptep:modifyForm:'+sid).setTitle(short('Modifier la demande · #'+demand.id,45)).addComponents(filled('objet','Bâtiment ou recherche',demand.objet),filled('niveau','Niveau visé',demand.niveau),filled('food','Pommes demandées',demand.nbpomme_original),filled('wood','Matériaux demandés',demand.nbmateriaux_original),filled('date','Date souhaitée (JJ-MM-AAAA)',demand.date_souhaitee?frenchDate(demand.date_souhaitee):'',false)));
+      return await i.showModal(new ModalBuilder().setCustomId('uptep:modifyForm:'+sid).setTitle(short('Modifier la demande · #'+demand.id,45)).addComponents(filled('objet','Bâtiment ou recherche',demand.objet),filled('niveau','Niveau visé',demand.niveau),filled('food','Pommes demandées',demand.nbpomme_original),filled('wood','Matériaux demandés',demand.nbmateriaux_original),filled('date','Date de validation souhaitée (JJ-MM-AAAA)',demand.date_souhaitee?frenchDate(demand.date_souhaitee):'',false)));
      }
      const sid=this.state.create(i.user.id,'adjust',{demand});
      const food=field('food','Pommes encore nécessaires',true),wood=field('wood','Matériaux encore nécessaires',true);
@@ -68,7 +68,7 @@ export class UI {
     }
     if(s.type==='browse')return await i.editReply(this.detail(demand));
     const member=await this.api.member(i.user.id);this.check(s.type,demand,member);
-    return await this.stage(i,s.type,{path:'/demandes/'+demand.id+'/'+(s.type==='validate'?'validation':'annulation'),body:{discord_id:i.user.id,...(s.type==='validate'&&demand.version_modification?{version_attendue:demand.version_modification}:{})},summary:`${s.type==='validate'?'Valider':'Annuler'} la demande #${demand.id} de ${escape(demand.pseudo_demandeur)} ?`+(s.type==='validate'?`\n${escape(demand.objet||'Ressources')}${demand.niveau?' · niveau '+demand.niveau:''}\n🍎 ${fmt(demand.nbpomme_original)} · 🪵 ${fmt(demand.nbmateriaux_original)}\nDate souhaitée : ${demand.date_souhaitee?frenchDate(demand.date_souhaitee):'Non renseignée'}${demand.auto_production?'\n🏭 Auto production':''}`:'')});
+    return await this.stage(i,s.type,{path:'/demandes/'+demand.id+'/'+(s.type==='validate'?'validation':'annulation'),body:{discord_id:i.user.id,...(s.type==='validate'&&demand.version_modification?{version_attendue:demand.version_modification}:{})},summary:`${s.type==='validate'?'Valider':'Annuler'} la demande #${demand.id} de ${escape(demand.pseudo_demandeur)} ?`+(s.type==='validate'?`\n${escape(demand.objet||'Ressources')}${demand.niveau?' · niveau '+demand.niveau:''}\n🍎 ${fmt(demand.nbpomme_original)} · 🪵 ${fmt(demand.nbmateriaux_original)}\nDate de validation souhaitée : ${demand.date_souhaitee?frenchDate(demand.date_souhaitee):'Non renseignée'}${demand.auto_production?'\n🏭 Auto production':''}`:'')});
    }
    await i.deferReply({flags:MessageFlags.Ephemeral});
    if(action==='cancelConvoy'){
@@ -102,7 +102,7 @@ export class UI {
     if(!d.version_modification)throw new UserError('Rouvre Modifier une demande depuis le tableau actualisé.');
     const get=k=>i.fields.getTextInputValue(k);
     const body={discord_id:i.user.id,...amounts(get('food'),get('wood')),objet:cleanText(get('objet')),niveau:level(get('niveau').trim()),date_souhaitee:dueDate(get('date'))??null,version_attendue:d.version_modification};
-    return await this.autoOptions(i,'modify',{path:'/demandes/'+d.id+'/modification',body,summary:`Modifier la demande #${d.id} de **${escape(d.pseudo_demandeur)}**\n**${escape(body.objet)} · niveau ${body.niveau}**\n🍎 ${fmt(body.nbpomme)} · 🪵 ${fmt(body.nbmateriaux)}\nDate souhaitée : ${body.date_souhaitee?frenchDate(body.date_souhaitee):'Non renseignée'}\n\nLa demande restera en attente de validation.`,demand:d},d.auto_production);
+    return await this.autoOptions(i,'modify',{path:'/demandes/'+d.id+'/modification',body,summary:`Modifier la demande #${d.id} de **${escape(d.pseudo_demandeur)}**\n**${escape(body.objet)} · niveau ${body.niveau}**\n🍎 ${fmt(body.nbpomme)} · 🪵 ${fmt(body.nbmateriaux)}\nDate de validation souhaitée : ${body.date_souhaitee?frenchDate(body.date_souhaitee):'Non renseignée'}\n\nLa demande restera en attente de validation.`,demand:d},d.auto_production);
    }
    if(action==='adjustForm'){
     const s=this.state.get(id,i.user.id);if(s.type!=='adjust')throw new UserError('Formulaire invalide.');
@@ -124,7 +124,7 @@ export class UI {
      body={...body,objet:cleanText(get('objet')),niveau:level(get('niveau').trim()),date_souhaitee:dueDate(get('date'))};path='/demandes';summary=`Demander **${escape(body.objet)} niveau ${body.niveau}**`;
     }else{body.date_arrivee=parsed?parsed.date_arrivee:arrival(get('arrival'));body.date_convoi=new Date().toISOString().replace(/\.\d{3}Z$/,'Z');path='/demandes/'+s.data.demand.id+'/convois';summary=`Déclarer un convoi pour **${escape(s.data.demand.pseudo_demandeur)}**, demande #${s.data.demand.id}`;}
     summary+=`\n🍎 ${fmt(body.nbpomme)} · 🪵 ${fmt(body.nbmateriaux)}`;
-    if(body.date_souhaitee)summary+='\nDate souhaitée : '+frenchDate(body.date_souhaitee);
+    if(body.date_souhaitee)summary+='\nDate de validation souhaitée : '+frenchDate(body.date_souhaitee);
     if(body.date_arrivee)summary+='\nArrivée : <t:'+Math.floor(new Date(body.date_arrivee).getTime()/1000)+':f>';
     if(action==='requestForm')return await this.autoOptions(i,s.type,{path,body,summary},false);
     return await this.stage(i,s.type,{path,body,summary,demand:s.data.demand});
