@@ -1,10 +1,18 @@
-import {EmbedBuilder,PermissionFlagsBits} from 'discord.js';
+import {EmbedBuilder} from 'discord.js';
 import {fmt,short,launchLines,restricted} from './domain.js';
 import {createHash} from 'node:crypto';
+// Validation announcement: pings only the requester so they update their remaining need.
+// Old announcements pinged @everyone; both formats are still recognized for cleanup.
+const LEGACY_ANNOUNCEMENT='@everyone Une demande de ressources vient d’être validée !';
+const ANNOUNCEMENT=/^(?:<@[0-9]{17,20}> ta demande|La demande) #[1-9][0-9]* vient d’être validée !/;
+export const isValidationAnnouncement=content=>content===LEGACY_ANNOUNCEMENT||ANNOUNCEMENT.test(content??'');
+export const validationAnnouncement=(id,discord)=>/^[0-9]{17,20}$/.test(String(discord??''))
+ ?{content:`<@${discord}> ta demande #${id} vient d’être validée ! Pense à mettre à jour le restant avec **Modifier une demande** si besoin.`,allowedMentions:{parse:[],users:[String(discord)],roles:[]}}
+ :{content:`La demande #${id} vient d’être validée !`,allowedMentions:{parse:[]}};
 export class ValidationNotifications {
  constructor({state,getChannel,api}){Object.assign(this,{state,getChannel,api});this.running=null;}
  enqueue(demand){
-  // No @everyone announcement for a restricted demand.
+  // No public announcement for a restricted demand.
   if(!demand?.valide||restricted(demand))return;
   const key=String(demand.id);this.state.data.validationNotifications??={};
   const prior=this.state.data.validationNotifications[key];
@@ -24,7 +32,7 @@ export class ValidationNotifications {
    for(const [id,entry] of group){if(!closed.has(id))continue;entry.closed=true;this.state.save();
     for(const messageId of new Set([entry.sent,...(entry.extraMessages??[])].filter(Boolean))){
      try{const message=await channel.messages.fetch(messageId);
-      if(message.author.id!==channel.client.user.id||message.content!=='@everyone Une demande de ressources vient d’être validée !'||!message.embeds.some(e=>e.title?.startsWith('Demande #'+id+' validée · ')))throw Error('Annonce de validation non reconnue');
+      if(message.author.id!==channel.client.user.id||!isValidationAnnouncement(message.content)||!message.embeds.some(e=>e.title?.startsWith('Demande #'+id+' validée · ')))throw Error('Annonce de validation non reconnue');
       await message.delete();count++;
      }catch(e){if(e.code!==10008)throw e;}
     }
@@ -38,7 +46,7 @@ export class ValidationNotifications {
   this.state.data.validationNotifications??={};
   for(;;){const page=await channel.messages.fetch({limit:100,...(before?{before}:{})});if(!page.size)break;
    for(const m of page.values()){
-    if(m.author.id!==channel.client.user.id||m.content!=='@everyone Une demande de ressources vient d’être validée !')continue;
+    if(m.author.id!==channel.client.user.id||!isValidationAnnouncement(m.content))continue;
     const match=/^Demande #([1-9][0-9]*) validée · /.exec(m.embeds[0]?.title??'');if(!match)continue;
     const id=match[1],entry=this.state.data.validationNotifications[id];
     if(!entry)this.state.data.validationNotifications[id]={demand:{id},sent:m.id};
@@ -53,11 +61,10 @@ export class ValidationNotifications {
   const channel=this.getChannel();if(!channel)return;
   for(const [id,entry] of Object.entries(this.state.data.validationNotifications??{})){
    if(entry.sent||entry.closed)continue;
-   if(!channel.permissionsFor(channel.client.user)?.has(PermissionFlagsBits.MentionEveryone))throw new Error('Permission MentionEveryone nécessaire pour annoncer les validations.');
    const d=entry.demand;
    const embed=new EmbedBuilder().setColor(0x4b9d52).setTitle(short(`Demande #${id} validée · ${d.pseudo_demandeur}`,200)).setDescription(short(d.objet||'Ressources',200)+(d.niveau?' · niveau '+d.niveau:'')+(d.auto_production?'\n🏭 **Auto production**':'')+launchLines(d).map(line=>'\n'+line).join('')).addFields({name:'Ressources restantes',value:`🍎 ${fmt(d.nbpomme_restant)} · 🪵 ${fmt(d.nbmateriaux_restant)}`}).setFooter({text:'Utilise /livraisons pour estimer ton trajet, puis Déclarer un convoi pour enregistrer ton envoi.'});
    const nonce=d.date_validation?'val-'+createHash('sha256').update(id+':'+d.date_validation).digest('hex').slice(0,20):'val-'+id;
-   const msg=await channel.send({content:'@everyone Une demande de ressources vient d’être validée !',embeds:[embed],allowedMentions:{parse:['everyone'],users:[],roles:[]},nonce,enforceNonce:true});
+   const msg=await channel.send({...validationAnnouncement(id,d.discord_demandeur),embeds:[embed],nonce,enforceNonce:true});
    entry.sent=msg.id;this.state.save();
   }
  }

@@ -69,7 +69,7 @@ Le fichier fourni utilise `/home/uptep/discord-bot` et `/usr/bin/node`. Configur
 
 ### Permissions Discord
 
-Autoriser la lecture des salons et de l’historique, l’envoi de messages et les liens intégrés, y compris dans les fils utilisés. La mention `@everyone` nécessite sa permission spécifique pour les annonces de validation. **Message Content Intent** est nécessaire à `/solde-terrain`. Le bot n’a pas besoin du droit Administrateur Discord.
+Autoriser la lecture des salons et de l’historique, l’envoi de messages et les liens intégrés, y compris dans les fils utilisés. **Message Content Intent** est nécessaire à `/solde-terrain`. Le bot n’a pas besoin du droit Administrateur Discord.
 
 Un salon de test utilise la vraie base si l’API reste celle de production. Les tests locaux ci-dessous n’envoient pas de messages Discord et ne modifient pas l’API.
 
@@ -77,7 +77,7 @@ Un salon de test utilise la vraie base si l’API reste celle de production. Les
 
 Conserver **`data/state.json`** lors d’un déploiement : il contient les tableaux, confirmations idempotentes et files de notifications. Ne jamais publier `.env`, `data/` ou les identifiants Codex.
 
-Les tableaux sont actualisés environ chaque minute. Une validation effectuée dans Discord ou sur le site produit une annonce `@everyone`. Un convoi déclaré produit un MP au demandeur. Les opérations du site enregistrent un événement dans `convoy_web_events`, dans la même transaction que l’opération ; le bot sauvegarde cet événement dans sa file locale avant de l’acquitter via `/notifications-web`.
+Les tableaux sont actualisés environ chaque minute. Une validation effectuée dans Discord ou sur le site produit une annonce qui mentionne uniquement le demandeur. Un convoi déclaré produit un MP au demandeur. Les opérations du site enregistrent un événement dans `convoy_web_events`, dans la même transaction que l’opération ; le bot sauvegarde cet événement dans sa file locale avant de l’acquitter via `/notifications-web`.
 
 Les annonces sont retirées quand une demande est suspendue, terminée ou annulée. Les erreurs temporaires sont réessayées ; les MP bloqués sont abandonnés sans message public de secours. Les nonces limitent les doublons rapprochés, sans garantir une livraison exactement une fois après une longue coupure. Les anciennes opérations ne sont pas notifiées rétroactivement.
 

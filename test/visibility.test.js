@@ -31,7 +31,7 @@ test('Listes privées : chaque membre ne voit que les demandes qui lui sont ouve
  }finally{fs.rmSync(dir,{recursive:true});}
 });
 
-test('Pas d’annonce @everyone pour une demande restreinte',()=>{
+test('Pas d’annonce publique pour une demande restreinte',()=>{
  const saved=[];const state={data:{},save(){saved.push(1);}};const n=new ValidationNotifications({state,getChannel:()=>null});
  n.enqueue(relay);assert.deepEqual(state.data.validationNotifications??{},{});
  n.enqueue(open);assert.ok(state.data.validationNotifications['700']);

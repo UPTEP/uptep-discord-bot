@@ -145,7 +145,7 @@ Endpoint : `GET /livraisons?discord_id=…&vitesse=7&page=1`, scope existant `de
 
 ## Annonce des validations
 
-Après validation réussie via Discord ou le site, une annonce `@everyone` est envoyée dans `CONVOY_CHANNEL_ID`, avec le demandeur, le numéro de demande et les ressources restantes. Le bot doit avoir la permission « Mentionner @everyone, @here et tous les rôles ». Seule cette annonce autorise la mention everyone ; les autres messages gardent leurs protections de mentions.
+Après validation réussie via Discord ou le site, une annonce est envoyée dans `CONVOY_CHANNEL_ID`, avec le demandeur, le numéro de demande et les ressources restantes. Elle ne mentionne que le demandeur (`discord_demandeur`), pour qu’il mette à jour le restant avec **Modifier une demande** si besoin ; aucune mention `@everyone`, `@here` ni de rôle n’est autorisée. Sans ID Discord valide, l’annonce est publiée sans mention. Le bot n’a plus besoin de la permission « Mentionner @everyone, @here et tous les rôles ».
 
 Les annonces sont conservées dans le fichier privé `data/state.json`, avec le statut d’envoi par demande. Les échecs sont réessayés lors de l’actualisation du tableau ; un nonce stable protège les reprises rapprochées. Une coupure prolongée entre envoi Discord et sauvegarde locale peut toutefois produire un doublon. Aucune annonce rétroactive pour les demandes déjà validées avant ce déploiement. Les validations du site passent par la file transactionnelle `convoy_web_events` puis par le service de notifications du bot. Un autre client API doit explicitement mettre en place cette transmission.
 
@@ -185,7 +185,7 @@ API : `POST /floods/preview`, `POST /floods`, `GET /floods`. Scopes : `floods:wr
 
 Les messages privés des floods sont nettoyés : passage à une autre page ou confirmation supprime le message éphémère précédent ; succès et abandon disparaissent après trois secondes. Les listes, confirmations en attente et erreurs expirent après cinq minutes. Le tableau public est conservé. Ces minuteries ne survivent pas au redémarrage du bot.
 
-Les annonces de validation sont supprimées dès que leur demande est terminée (automatiquement ou manuellement) ou annulée. Le contrôle a lieu à l’actualisation du tableau, environ chaque minute, via `GET /demandes/statuts`. Il vérifie un état fermé explicite, sans déduire la clôture d’un résultat manquant. Les annonces anciennes sont récupérables avec `ValidationNotifications.recoverAnnouncements()` puis `cleanClosed()` ; seuls les messages du bot portant le texte et le titre exacts des annonces sont concernés.
+Les annonces de validation sont supprimées dès que leur demande est terminée (automatiquement ou manuellement) ou annulée. Le contrôle a lieu à l’actualisation du tableau, environ chaque minute, via `GET /demandes/statuts`. Il vérifie un état fermé explicite, sans déduire la clôture d’un résultat manquant. Les annonces anciennes sont récupérables avec `ValidationNotifications.recoverAnnouncements()` puis `cleanClosed()` ; seuls les messages du bot portant le texte et le titre des annonces sont concernés, y compris les anciennes annonces `@everyone`.
 
 ## Connexion privée au site
 

@@ -8,16 +8,16 @@ test('Suspension removes old announcement; revalidation can announce again with 
  notices.enqueue({...d,date_validation:'2026-10-14T10:00:00Z'});await notices.flush();valid=false;await notices.cleanClosed();assert.deepEqual(deleted,['1']);await notices.flush();assert.equal(sent.length,1);
  valid=true;notices.enqueue({...d,date_validation:'2026-10-14T11:00:00Z'});await notices.flush();assert.equal(sent.length,2);assert.notEqual(sent[0].nonce,sent[1].nonce);assert(sent[1].nonce.length<=25);
 });
-test('successful validation announces everyone only once, even concurrent flush/replay',async()=>{
+test('successful validation announces only once, even concurrent flush/replay',async()=>{
  const state={data:{},save(){}};const sent=[];const channel={client:{user:{}},permissionsFor:()=>({has:()=>true}),send:async p=>{sent.push(p);return {id:'123'};}};
  const n=new ValidationNotifications({state,getChannel:()=>channel});n.enqueue({...d,valide:false});await n.flush();assert.equal(sent.length,0);
- n.enqueue(d);await Promise.all([n.flush(),n.flush()]);n.enqueue(d);await n.flush();assert.equal(sent.length,1);assert.deepEqual(sent[0].allowedMentions,{parse:['everyone'],users:[],roles:[]});assert.equal(state.data.validationNotifications['12'].sent,'123');
+ n.enqueue(d);await Promise.all([n.flush(),n.flush()]);n.enqueue(d);await n.flush();assert.equal(sent.length,1);assert.equal(sent[0].content,'La demande #12 vient d’être validée !');assert.deepEqual(sent[0].allowedMentions,{parse:[]});assert.equal(state.data.validationNotifications['12'].sent,'123');
  const restored=new ValidationNotifications({state,getChannel:()=>channel});await restored.flush();assert.equal(sent.length,1);
 });
-test('failed send or missing mention permission remains pending for retry',async()=>{
- const state={data:{},save(){}};let allowed=false,fail=true;
- const channel={client:{user:{}},permissionsFor:()=>({has:()=>allowed}),send:async()=>{if(fail)throw Error('network');return {id:'321'};}};
- const n=new ValidationNotifications({state,getChannel:()=>channel});n.enqueue(d);await assert.rejects(n.flush(),/MentionEveryone/);allowed=true;await assert.rejects(n.flush(),/network/);assert.equal(state.data.validationNotifications['12'].sent,null);fail=false;await n.flush();assert.equal(state.data.validationNotifications['12'].sent,'321');
+test('failed send remains pending for retry',async()=>{
+ const state={data:{},save(){}};let fail=true;
+ const channel={client:{user:{}},send:async()=>{if(fail)throw Error('network');return {id:'321'};}};
+ const n=new ValidationNotifications({state,getChannel:()=>channel});n.enqueue(d);await assert.rejects(n.flush(),/network/);assert.equal(state.data.validationNotifications['12'].sent,null);fail=false;await n.flush();assert.equal(state.data.validationNotifications['12'].sent,'321');
 });
 import {UI} from '../src/ui.js';import {State} from '../src/state.js';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 test('UI queues announcement only after successful validation, never a failed action or replay',async()=>{
@@ -56,4 +56,26 @@ test('closed requests delete only bot validation announcements, active and unkno
  const channel={client:{user:{id:'bot'}},messages:{fetch:async id=>({author:{id:'bot'},content:'@everyone Une demande de ressources vient d’être validée !',embeds:[{title:'Demande #'+id[0]+' validée · Test'}],delete:async()=>deleted.push(id)})}};
  const n=new ValidationNotifications({state,getChannel:()=>channel,api:{request:async()=>({demandes:[{id:'1',fini:true,annulee:false},{id:'2',fini:false,annulee:true},{id:'3',fini:false,annulee:false}]})}});
  assert.equal(await n.cleanClosed(),2);assert.deepEqual(deleted,['11','22']);assert.equal(await n.cleanClosed(),0);assert.equal(state.data.validationNotifications['3'].removed,undefined);assert.equal(state.data.validationNotifications['4'].removed,undefined);
+});
+
+test('validation pings only the requester, never everyone or a role',async()=>{
+ const state={data:{},save(){}};const sent=[];const channel={client:{user:{}},send:async p=>{sent.push(p);return {id:'1'};}};
+ const n=new ValidationNotifications({state,getChannel:()=>channel});n.enqueue({...d,discord_demandeur:'123456789012345678'});await n.flush();
+ assert.equal(sent[0].content,'<@123456789012345678> ta demande #12 vient d’être validée ! Pense à mettre à jour le restant avec **Modifier une demande** si besoin.');
+ assert.deepEqual(sent[0].allowedMentions,{parse:[],users:['123456789012345678'],roles:[]});assert.doesNotMatch(sent[0].content,/@everyone|@here/);
+ assert.equal(sent[0].embeds[0].data.title,'Demande #12 validée · User');
+ // A malformed Discord ID is never turned into a mention.
+ n.enqueue({...d,id:'13',discord_demandeur:'@everyone'});await n.flush();assert.equal(sent[1].content,'La demande #13 vient d’être validée !');assert.deepEqual(sent[1].allowedMentions,{parse:[]});
+});
+import {isValidationAnnouncement} from '../src/notifications.js';
+test('cleanup recognizes old @everyone announcements and new requester pings only',async()=>{
+ assert.ok(isValidationAnnouncement('@everyone Une demande de ressources vient d’être validée !'));
+ assert.ok(isValidationAnnouncement('<@123456789012345678> ta demande #12 vient d’être validée ! Pense à mettre à jour le restant avec **Modifier une demande** si besoin.'));
+ assert.ok(isValidationAnnouncement('La demande #12 vient d’être validée !'));
+ for(const other of ['Une demande de ressources vient d’être validée !','Bonjour',undefined])assert.equal(isValidationAnnouncement(other),false);
+ const state={data:{validationNotifications:{'1':{sent:'11'},'2':{sent:'22'}}},save(){}};const deleted=[];
+ const contents={'11':'@everyone Une demande de ressources vient d’être validée !','22':'<@123456789012345678> ta demande #2 vient d’être validée ! Pense à mettre à jour le restant avec **Modifier une demande** si besoin.'};
+ const channel={client:{user:{id:'bot'}},messages:{fetch:async id=>({author:{id:'bot'},content:contents[id],embeds:[{title:'Demande #'+id[0]+' validée · Test'}],delete:async()=>deleted.push(id)})}};
+ const n=new ValidationNotifications({state,getChannel:()=>channel,api:{request:async()=>({demandes:[{id:'1',fini:true},{id:'2',annulee:true}]})}});
+ assert.equal(await n.cleanClosed(),2);assert.deepEqual(deleted,['11','22']);
 });
